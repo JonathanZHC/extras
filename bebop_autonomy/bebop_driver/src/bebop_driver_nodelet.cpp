@@ -207,10 +207,6 @@ void BebopDriverNodelet::CmdVelCallback(const geometry_msgs::TwistConstPtr& twis
     // TODO: Always apply zero after non-zero values
     if (is_bebop_twist_changed)
     {
-      // TODO: Remove message in future release
-      ROS_WARN_ONCE("ATTENTION: * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *");
-      ROS_WARN_ONCE("ATTENTION: Bebop driver now follows right-hand convention (ie. +angular.z translates to CCW rotation). This message will be removed in a future release.");
-      ROS_WARN_ONCE("ATTENTION: * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *");
       bebop_ptr_->Move(CLAMP(-bebop_twist_.linear.y, -1.0, 1.0),
                        CLAMP(bebop_twist_.linear.x, -1.0, 1.0),
                        CLAMP(bebop_twist_.linear.z, -1.0, 1.0),
@@ -257,7 +253,7 @@ void BebopDriverNodelet::CameraMoveCallback(const geometry_msgs::TwistConstPtr& 
     if (is_camera_twist_changed)
     {
       // TODO(mani-monaj): Set |90| limit to appropriate value (|45|??)
-      bebop_ptr_->MoveCamera(CLAMP(camera_twist_.angular.y, -90.0, 90.0),
+      bebop_ptr_->MoveCamera(CLAMP(camera_twist_.angular.y, -35.0, 35.0),
                              CLAMP(camera_twist_.angular.z, -35.0, 35.0));
       prev_camera_twist_ = camera_twist_;
     }

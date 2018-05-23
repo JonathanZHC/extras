@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!-- This is a launch file that run all essential parts of crazyflie platform -->
+<launch>
+
+    <!-- Nodelet-->
+    <node pkg="nodelet" type="nodelet" name="CriticalNodes"  args="manager" output="screen"/>
+
+    <!-- Vicon Mapping & Estimator -->
+    <node pkg="nodelet" type="nodelet" name="ViconBridge"
+          args="load ViconReceiverNodelet CriticalNodes" output="screen">
+        <param name="stream_mode" value="ClientPull" type="str" />
+        <param name="datastream_hostport" value="192.168.2.102:801" type="str" />
+    </node>
+
+
+
+</launch>

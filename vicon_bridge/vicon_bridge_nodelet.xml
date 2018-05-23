@@ -1,0 +1,7 @@
+<library path="/home/tracy/Projects/charlottetown/extras/devel/lib/libvicon_bridge">
+    <class name="ViconReceiverNodelet" type="ViconReceiverNodelet" base_class_type="nodelet::Nodelet">
+        <description>
+            Vicon bridge.
+        </description>
+    </class>
+</library>

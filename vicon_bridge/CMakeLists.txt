@@ -8,10 +8,11 @@ find_package(catkin REQUIRED COMPONENTS
     roscpp
     tf
     diagnostic_updater
+        nodelet
 )
 
 find_package(Boost REQUIRED COMPONENTS thread)
-
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 # Generate messages and services
 add_message_files(FILES
     Marker.msg
@@ -35,7 +36,9 @@ catkin_package(CATKIN_DEPENDS
     dynamic_reconfigure
     geometry_msgs
     message_runtime 
-    roscpp 
+    roscpp
+        LIBRARIES vicon_bridge
+    DEPENDS nodelet
 )
 
 # check for platform and use the right Vicon SDK
@@ -56,7 +59,7 @@ include_directories(src ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${VICON_SDK
 
 add_library(msvc_bridge src/msvc_bridge.cpp)
 
-add_executable(vicon_bridge src/vicon_bridge.cpp)
+add_library(vicon_bridge src/vicon_bridge.cpp)
 target_link_libraries(vicon_bridge
     msvc_bridge
     ${VICON_SDK_LIBRARY}
@@ -82,3 +85,11 @@ target_link_libraries(testclient
     ${VICON_SDK_LIBRARY}
     ${Boost_LIBRARIES}
 )
+
+install(TARGETS vicon_bridge
+        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+install(FILES vicon_bridge_nodelet.xml
+        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

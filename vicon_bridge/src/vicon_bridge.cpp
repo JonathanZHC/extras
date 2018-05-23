@@ -43,6 +43,10 @@
 #include <vicon_bridge/viconGrabPose.h>
 #include <iostream>
 
+#include <thread>
+#include "nodelet/nodelet.h"
+#include "pluginlib/class_list_macros.h"
+
 #include <vicon_bridge/Markers.h>
 #include <vicon_bridge/Marker.h>
 
@@ -149,8 +153,8 @@ typedef map<string, SegmentPublisher> SegmentMap;
 class ViconReceiver
 {
 private:
-  ros::NodeHandle nh;
-  ros::NodeHandle nh_priv;
+  ros::NodeHandle& nh_pub;
+  ros::NodeHandle& nh_priv;
   // Diagnostic Updater
   diagnostic_updater::Updater diag_updater;
   double min_freq_;
@@ -206,8 +210,8 @@ public:
     //grab_frames_thread_.join();
   }
 
-  ViconReceiver() :
-    nh_priv("~"), diag_updater(), min_freq_(0.1), max_freq_(1000),
+  ViconReceiver(ros::NodeHandle& nhp,ros::NodeHandle& nh) :
+    nh_priv(nhp), nh_pub(nh),diag_updater(), min_freq_(0.1), max_freq_(1000),
         freq_status_(diagnostic_updater::FrequencyStatusParam(&min_freq_, &max_freq_)), stream_mode_("ClientPull"),
         host_name_(""), tf_ref_frame_id_("world"), tracked_frame_suffix_("vicon"),
         lastFrameNumber(0), frameCount(0), droppedFrameCount(0), frame_datum(0), n_markers(0), n_unlabeled_markers(0),
@@ -242,9 +246,9 @@ public:
     // Publishers
     if(publish_markers_)
     {
-      marker_pub_ = nh.advertise<vicon_bridge::Markers>(tracked_frame_suffix_ + "/markers", 10);
+      marker_pub_ = nh_pub.advertise<vicon_bridge::Markers>(tracked_frame_suffix_ + "/markers", 10);
     }
-    startGrabbing();
+//    startGrabbing();
   }
 
   ~ViconReceiver()
@@ -273,7 +277,7 @@ private:
   {
     ROS_INFO_STREAM("Connecting to Vicon DataStream SDK at " << host_name_ << " ...");
 
-    ros::Duration d(1);
+    ros::Duration d(0.5f);
     Result::Enum result(Result::Unknown);
 
     while (!msvcbridge::IsConnected().Connected)
@@ -284,6 +288,7 @@ private:
       ros::spinOnce();
       if (!ros::ok())
         return false;
+      ROS_INFO("Starting!!!!!!!!!!!!!!!");
     }
     ROS_ASSERT(msvcbridge::IsConnected().Connected);
     ROS_INFO_STREAM("... connected!");
@@ -331,7 +336,7 @@ private:
 
     if(publish_tf_)
     {
-      spub.pub = nh.advertise<geometry_msgs::TransformStamped>(tracked_frame_suffix_ + "/" + subject_name + "/"
+      spub.pub = nh_pub.advertise<geometry_msgs::TransformStamped>(tracked_frame_suffix_ + "/" + subject_name + "/"
                                                                                                             + segment_name, 10);
     }
     // try to get zero pose from parameter server
@@ -751,15 +756,39 @@ private:
 
 };
 
-int main(int argc, char** argv)
-{
-  ros::init(argc, argv, "vicon");
+class ViconReceiverNodelet : public nodelet::Nodelet{
+public:
+    ViconReceiverNodelet() {};
+    ~ViconReceiverNodelet() {main.join(); delete vr;};
+
+private:
+    virtual void onInit(){
+      ROS_INFO_STREAM("Starting ViconBridge");
+      np = getPrivateNodeHandle();
+      n = getNodeHandle();
+      vr = new ViconReceiver(np, n);
+      main = std::thread(&ViconReceiver::startGrabbing, vr);
+    }
+
+    ViconReceiver* vr;
+    ros::NodeHandle np;
+    ros::NodeHandle n;
+
+    std::thread main;
+
+};
+
+//int main(int argc, char** argv)
+//{
+//  ros::init(argc, argv, "vicon");
 //  ViconReceiver vr;
 //  ros::spin();
+//
+//  ros::AsyncSpinner aspin(1);
+//  aspin.start();
+//  ViconReceiver vr;
+//  aspin.stop();
+//  return 0;
+//}
 
-  ros::AsyncSpinner aspin(1);
-  aspin.start();
-  ViconReceiver vr;
-  aspin.stop();
-  return 0;
-}
+PLUGINLIB_EXPORT_CLASS(ViconReceiverNodelet, nodelet::Nodelet)

@@ -285,7 +285,7 @@ private:
       msvcbridge::Connect(host_name_);
       ROS_INFO(".");
       d.sleep();
-      ros::spinOnce();
+//      ros::spinOnce();
       if (!ros::ok())
         return false;
       ROS_INFO("Starting!!!!!!!!!!!!!!!");

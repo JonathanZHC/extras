@@ -1,4 +1,4 @@
-<library path="/home/tracy/Projects/charlottetown/extras/devel/lib/libvicon_bridge">
+<library path="/home/tracy/Projects/charlottetown/extras/devel/lib/libvicon_bridge_lib">
     <class name="ViconReceiverNodelet" type="ViconReceiverNodelet" base_class_type="nodelet::Nodelet">
         <description>
             Vicon bridge.

@@ -37,7 +37,7 @@ catkin_package(CATKIN_DEPENDS
     geometry_msgs
     message_runtime 
     roscpp
-        LIBRARIES vicon_bridge
+        LIBRARIES vicon_bridge_lib
     DEPENDS nodelet
 )
 
@@ -55,16 +55,17 @@ else(CMAKE_SIZEOF_VOID_P MATCHES "8")
 endif (CMAKE_SIZEOF_VOID_P MATCHES "8")
 find_library(VICON_SDK_LIBRARY ViconDataStreamSDK_CPP PATHS ${VICON_SDK_LINK_DIR})
 
-include_directories(src ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${VICON_SDK_INCLUDE_DIR})
+include_directories(src include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${VICON_SDK_INCLUDE_DIR})
 
 add_library(msvc_bridge src/msvc_bridge.cpp)
 
-add_library(vicon_bridge src/vicon_bridge.cpp)
-target_link_libraries(vicon_bridge
+add_library(vicon_bridge_lib src/vicon_bridge.cpp)
+target_link_libraries(vicon_bridge_lib
     msvc_bridge
     ${VICON_SDK_LIBRARY}
     ${catkin_LIBRARIES}
 )
+add_dependencies(vicon_bridge_lib ${PROJECT_NAME}_gencpp)
 add_dependencies(vicon_bridge ${PROJECT_NAME}_gencpp)
 
 add_executable(calibrate src/calibrate_segment.cpp)
@@ -86,7 +87,7 @@ target_link_libraries(testclient
     ${Boost_LIBRARIES}
 )
 
-install(TARGETS vicon_bridge
+install(TARGETS vicon_bridge_lib
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

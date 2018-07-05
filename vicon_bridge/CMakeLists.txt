@@ -66,7 +66,14 @@ target_link_libraries(vicon_bridge_lib
     ${catkin_LIBRARIES}
 )
 add_dependencies(vicon_bridge_lib ${PROJECT_NAME}_gencpp)
+
+add_executable(vicon_bridge src/vicon_bridge_main.cpp)
+target_link_libraries(vicon_bridge
+        vicon_bridge_lib
+        ${catkin_LIBRARIES}
+        )
 add_dependencies(vicon_bridge ${PROJECT_NAME}_gencpp)
+
 
 add_executable(calibrate src/calibrate_segment.cpp)
 target_link_libraries(calibrate

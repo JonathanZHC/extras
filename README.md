@@ -1,7 +1,4 @@
 # extras
-Third party code.
+Branch only including the Vicon bridge nodelet (e.g. for use with `utiasDSL?crazyswarm-import`).
 
-* joy: https://github.com/ros-drivers/joystick_drivers 
 * vicon-bridge: https://github.com/ethz-asl/ros-drivers/tree/master/vicon_bridge
-* ardrone-autonomy: https://github.com/AutonomyLab/ardrone_autonomy
-* bebop-autonomy: https://github.com/AutonomyLab/bebop_autonomy

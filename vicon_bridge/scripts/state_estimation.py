@@ -174,8 +174,8 @@ class StateEstimator(object):
         """Predict future states using a double integrator model."""
         # Acceleration and angular velocity are assumed constant
         # Update position and orientation
-        self.pos += self.dt * self.vel  # + 0.5 * self.dt * self.dt * self.acc
-        # self.vel += self.dt * self.acc
+        self.pos += self.dt * self.vel + 0.5 * self.dt * self.dt * self.acc
+        self.vel += self.dt * self.acc
         self.quat = apply_omega_to_quat(self.quat, self.omega_g, self.dt)
 
     def measurement_update(self):

@@ -272,11 +272,11 @@ if __name__ == '__main__':
 
     # Tuning parameters for Kalman Filter
     # increase in tau -> increase in c or d -> trust measurements less
-    tau_est_trans = rospy.get_param('~tauEstTrans', 0.00001)
-    tau_est_trans_dot = rospy.get_param('~tauEstTransDot', 0.045)
-    tau_est_trans_dot_dot = rospy.get_param('~tauEstTransDotDot', 0.750)
-    tau_est_rot = rospy.get_param('~tauEstRot', 0.001)
-    tau_est_rot_dot = rospy.get_param('~tauEstRotDot', 0.025)
+    tau_est_trans = rospy.get_param('~tauEstTrans', 0.0001)
+    tau_est_trans_dot = rospy.get_param('~tauEstTransDot', 0.007)
+    tau_est_trans_dot_dot = rospy.get_param('~tauEstTransDotDot', 0.09)
+    tau_est_rot = rospy.get_param('~tauEstRot', 0.005)
+    tau_est_rot_dot = rospy.get_param('~tauEstRotDot', 0.07)
 
     # Make sure the parameters are set if default values used
     rospy.set_param('~tauEstTrans', tau_est_trans)

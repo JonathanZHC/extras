@@ -9,9 +9,12 @@
     <node pkg="nodelet" type="nodelet" name="ViconBridge"
           args="load ViconReceiverNodelet CriticalNodes" output="screen">
         <param name="stream_mode" value="ClientPull" type="str" />
-        <param name="datastream_hostport" value="192.168.2.120:801" type="str" />
+        <param name="datastream_hostport" value="10.157.163.191:801" type="str" />
     </node>
 
-
+    <!--Launch our own state estimation on top of it-->
+	<node name="state_estimation" pkg="vicon_bridge" type="vicon.py" output="screen" required="True">
+        <param name="model" value="cf23" type="str" />
+    </node>
 
 </launch>

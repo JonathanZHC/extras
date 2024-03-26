@@ -18,11 +18,14 @@ add_message_files(FILES
     Marker.msg
     Markers.msg
     TfDistortInfo.msg
+    StateData.msg
+    StateVector.msg
 )
 
 add_service_files(FILES
     viconCalibrateSegment.srv
     viconGrabPose.srv
+    GetState.srv
 )
 
 generate_messages(DEPENDENCIES geometry_msgs)

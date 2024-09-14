@@ -27,6 +27,7 @@ Jan 17, 2017 - Fix Folder structure and coding style
 from __future__ import division, print_function
 import rospy
 import time
+import math
 
 import numpy
 import tf.transformations as tf
@@ -151,6 +152,21 @@ class ViconCoordinates(object):
         
         self.prev_t = None
 
+
+        "----------for test----------"
+        self.counter = 0
+        self.delta_t_0_ave = 0
+        self.delta_t_0_var = 0
+        self.delta_t_1_ave = 0
+        self.delta_t_1_var = 0
+        self.delta_t_2_ave = 0
+        self.delta_t_2_var = 0
+        self.delta_t_3_ave = 0
+        self.delta_t_3_var = 0
+        self.delta_t_sum_ave = 0
+        self.delta_t_sum_var = 0
+        "----------for test----------"
+
     def convert_measurement_state(self, vicon):
         """Convert vicon measurements (prior states).
 
@@ -224,10 +240,15 @@ class ViconCoordinates(object):
         
 
         "----------for test----------"
+        self.counter += 1
         t1 = time.time()
         if self.prev_t:
             delta_t_0 = t1 - self.prev_t
-            rospy.loginfo("time since start of last cycle: %f. " %delta_t_0)
+            self.delta_t_0_ave_old = self.delta_t_0_ave
+            self.delta_t_0_ave += (delta_t_0 - self.delta_t_0_ave_old) / self.counter
+            self.delta_t_0_var = (self.delta_t_0_var * (self.counter-2) + (delta_t_0 - self.delta_t_0_ave_old) * (delta_t_0 - self.delta_t_0_ave)) / (self.counter-1)
+            rospy.loginfo("ave time since start of last cycle: %f. " %self.delta_t_0_ave)
+            rospy.loginfo("var of time since start of last cycle: %f. " %math.sqrt(self.delta_t_0_var))
         "----------for test----------"
 
 
@@ -237,8 +258,8 @@ class ViconCoordinates(object):
         time_difference = time_input - self.time_state
 
         # Report timestamps
-        rospy.loginfo("Received timestamps: state: %f, input: %f. " %(self.time_state, time_input))
-        rospy.loginfo("Timestamp difference: %f. " %time_difference)
+        #rospy.loginfo("Received timestamps: state: %f, input: %f. " %(self.time_state, time_input))
+        #rospy.loginfo("Timestamp difference: %f. " %time_difference)
 
 
 
@@ -247,7 +268,11 @@ class ViconCoordinates(object):
         "----------for test----------" # around 0.0015s
         t2 = time.time()
         delta_t_1 = t2 - t1
-        rospy.loginfo("Current cycle time for period 1 of estimator: %f. " %delta_t_1)
+        self.delta_t_1_ave_old = self.delta_t_1_ave
+        self.delta_t_1_ave += (delta_t_1 - self.delta_t_1_ave_old) / self.counter
+        self.delta_t_1_var = (self.delta_t_1_var * (self.counter-2) + (delta_t_1 - self.delta_t_1_ave_old) * (delta_t_1 - self.delta_t_1_ave)) / (self.counter-1)
+        rospy.loginfo("ave cycle time for period 1 of estimator: %f. " %self.delta_t_1_ave)
+        rospy.loginfo("var of cycle time for period 1 of estimator: %f. " %math.sqrt(self.delta_t_1_var))
         "----------for test----------"
 
 
@@ -259,15 +284,14 @@ class ViconCoordinates(object):
         if time_difference < self.slop_limit:
             # Compute the velocities from the current and past measurements
             self.synchronized = True
-            print("Messsages are synchronized, will publish estimated data from estimator")
+            #print("Messsages are synchronized, will publish estimated data from estimator")
         else:
             self.synchronized = False
             #raise EnvironmentError('Messsages are not synchronized.')
-            print("Warning!!!Warning!!!Warning!!!Warning!!!Messsages are not synchronized!Warning!!!Warning!!!Warning!!!Warning!!!")
+            #print("Warning!!!Warning!!!Warning!!!Warning!!!Messsages are not synchronized!Warning!!!Warning!!!Warning!!!Warning!!!")
 
         self.estimator.get_new_measurement(self.time_state, self.raw_position, self.raw_quaternion, input)
-        # Use various filter / the model knowledge / the measured data to estimate the real state
-
+        
 
 
 
@@ -275,13 +299,17 @@ class ViconCoordinates(object):
         "----------for test----------" # around 0.0008s
         t3 = time.time()
         delta_t_2 = t3 - t2
-        rospy.loginfo("Current cycle time for period 2 of estimator: %f. " %delta_t_2)
+        self.delta_t_2_ave_old = self.delta_t_2_ave
+        self.delta_t_2_ave += (delta_t_2 - self.delta_t_2_ave_old) / self.counter
+        self.delta_t_2_var = (self.delta_t_2_var * (self.counter-2) + (delta_t_2 - self.delta_t_2_ave_old) * (delta_t_2 - self.delta_t_2_ave)) / (self.counter-1)
+        rospy.loginfo("ave cycle time for period 2 of estimator: %f. " %self.delta_t_2_ave)
+        rospy.loginfo("var of cycle time for period 2 of estimator: %f. " %math.sqrt(self.delta_t_2_var))
         "----------for test----------"
 
 
 
 
-
+        # Use various filter / the model knowledge / the measured data to estimate the real state
         if self.estimator.observer == 'simple':
             # Predict future states (double integrator)
             # dt is not always constant, can't do it after publish_vicon()
@@ -304,9 +332,17 @@ class ViconCoordinates(object):
         "----------for test----------" # around 0.0008s
         t4 = time.time()
         delta_t_3 = t4 - t3
-        rospy.loginfo("Current cycle time for period 3 of estimator: %f. " %delta_t_3)
-        delta_t_4 = t4 - t1
-        rospy.loginfo("Current cycle time of estimator: %f. " %delta_t_4)
+        self.delta_t_3_ave_old = self.delta_t_3_ave
+        self.delta_t_3_ave += (delta_t_3 - self.delta_t_3_ave_old) / self.counter
+        self.delta_t_3_var = (self.delta_t_3_var * (self.counter-2) + (delta_t_3 - self.delta_t_3_ave_old) * (delta_t_3 - self.delta_t_3_ave)) / self.counter
+        rospy.loginfo("ave cycle time for period 3 of estimator: %f. " %self.delta_t_3_ave)
+        rospy.loginfo("var of cycle time for period 3 of estimator: %f. " %math.sqrt(self.delta_t_3_var))
+        delta_t_sum = t4 - t1
+        self.delta_t_sum_ave_old = self.delta_t_sum_ave
+        self.delta_t_sum_ave += (delta_t_sum - self.delta_t_sum_ave_old) / self.counter
+        self.delta_t_sum_var = (self.delta_t_sum_var * (self.counter-2) + (delta_t_sum - self.delta_t_sum_ave_old) * (delta_t_sum - self.delta_t_sum_ave)) / self.counter
+        rospy.loginfo("ave cycle time of estimator: %f. " %self.delta_t_sum_ave)
+        rospy.loginfo("var of cycle time of estimator: %f. " %math.sqrt(self.delta_t_sum_var))
         "----------for test----------"
         self.prev_t = t1
         "----------for test----------"

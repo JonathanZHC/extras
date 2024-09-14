@@ -63,8 +63,6 @@ class StateVectorListener:
         self.noise_data = load_data(noise_data_filepath)[1:, :]
 
     def callback(self, msg):
-        rospy.loginfo("Received message: %s", msg)
-
         # Trandform message from StateVector into array
         msg_array = np.array([[
             round((float(msg.header.stamp.secs) + float(msg.header.stamp.nsecs) * 1e-9), 3),
@@ -80,6 +78,8 @@ class StateVectorListener:
         ]])
         
         self.data = np.vstack((self.data, msg_array))
+        
+        #rospy.loginfo("Received message: %s", msg)
 
     def data_cleaning(self):
 

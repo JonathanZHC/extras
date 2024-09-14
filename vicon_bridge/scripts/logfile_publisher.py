@@ -331,9 +331,9 @@ class LogfilePublisher(object):
         
             # Publish current data
             self.pub_state.publish(vicon)
-            print("logdata_state published, timestamp: ", self.data2publish['timestamp'][i])
+            #print("logdata_state published, timestamp: ", self.data2publish['timestamp'][i])
             self.pub_input.publish(controller)
-            print("logdata_input published, timestamp: ", self.data2publish['timestamp'][i])
+            #print("logdata_input published, timestamp: ", self.data2publish['timestamp'][i])
             #self.rate.sleep()
 
 if __name__ == '__main__':

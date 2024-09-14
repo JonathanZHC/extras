@@ -239,7 +239,7 @@ class ViconCoordinates(object):
         """
         
 
-        "----------for test----------"
+        "----------for test----------" # ave: 0.0166; var: 0.0024
         self.counter += 1
         t1 = time.time()
         if self.prev_t:
@@ -265,7 +265,7 @@ class ViconCoordinates(object):
 
 
 
-        "----------for test----------" # around 0.0015s
+        "----------for test----------" # ave: 0.0018; var: 0.0008
         t2 = time.time()
         delta_t_1 = t2 - t1
         self.delta_t_1_ave_old = self.delta_t_1_ave
@@ -296,7 +296,7 @@ class ViconCoordinates(object):
 
 
 
-        "----------for test----------" # around 0.0008s
+        "----------for test----------" # ave: 0.0015; var: 0.0005
         t3 = time.time()
         delta_t_2 = t3 - t2
         self.delta_t_2_ave_old = self.delta_t_2_ave
@@ -329,7 +329,7 @@ class ViconCoordinates(object):
 
 
 
-        "----------for test----------" # around 0.0008s
+        "----------for test----------" # ave: 0.0021; var: 0.0006
         t4 = time.time()
         delta_t_3 = t4 - t3
         self.delta_t_3_ave_old = self.delta_t_3_ave
@@ -337,6 +337,7 @@ class ViconCoordinates(object):
         self.delta_t_3_var = (self.delta_t_3_var * (self.counter-2) + (delta_t_3 - self.delta_t_3_ave_old) * (delta_t_3 - self.delta_t_3_ave)) / self.counter
         rospy.loginfo("ave cycle time for period 3 of estimator: %f. " %self.delta_t_3_ave)
         rospy.loginfo("var of cycle time for period 3 of estimator: %f. " %math.sqrt(self.delta_t_3_var))
+        "----------for test----------" # ave: 0.0054; var: 0.0011
         delta_t_sum = t4 - t1
         self.delta_t_sum_ave_old = self.delta_t_sum_ave
         self.delta_t_sum_ave += (delta_t_sum - self.delta_t_sum_ave_old) / self.counter

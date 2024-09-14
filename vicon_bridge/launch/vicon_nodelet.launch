@@ -15,6 +15,7 @@
     <!--Launch our own state estimation on top of it-->
 	<node name="state_estimation" pkg="vicon_bridge" type="vicon.py" output="screen" required="True">
         <param name="model" value="cf23" type="str" />
+        <param name="sim" value="False" type="bool" />
     </node>
 
 </launch>

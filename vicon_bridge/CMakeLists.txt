@@ -6,13 +6,17 @@ find_package(catkin REQUIRED COMPONENTS
     dynamic_reconfigure
     geometry_msgs
     roscpp
+    rospy
     tf
     diagnostic_updater
-        nodelet
+    nodelet
+    std_msgs
+    message_filters
 )
 
 find_package(Boost REQUIRED COMPONENTS thread)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+
 # Generate messages and services
 add_message_files(FILES
     Marker.msg
@@ -20,6 +24,7 @@ add_message_files(FILES
     TfDistortInfo.msg
     StateData.msg
     StateVector.msg
+    Command.msg
 )
 
 add_service_files(FILES
@@ -28,7 +33,10 @@ add_service_files(FILES
     GetState.srv
 )
 
-generate_messages(DEPENDENCIES geometry_msgs)
+generate_messages(DEPENDENCIES 
+    geometry_msgs
+    std_msgs
+)
 
 # Generate dynamic parameters
 generate_dynamic_reconfigure_options(
@@ -40,7 +48,8 @@ catkin_package(CATKIN_DEPENDS
     geometry_msgs
     message_runtime 
     roscpp
-        LIBRARIES vicon_bridge_lib
+    std_msgs
+    LIBRARIES vicon_bridge_lib
     DEPENDS nodelet
 )
 
@@ -68,39 +77,44 @@ target_link_libraries(vicon_bridge_lib
     ${VICON_SDK_LIBRARY}
     ${catkin_LIBRARIES}
 )
-add_dependencies(vicon_bridge_lib ${PROJECT_NAME}_gencpp)
+add_dependencies(vicon_bridge_lib ${PROJECT_NAME}_generate_messages_cpp)
 
 add_executable(vicon_bridge src/vicon_bridge_main.cpp)
 target_link_libraries(vicon_bridge
-        vicon_bridge_lib
-        ${catkin_LIBRARIES}
-        )
-add_dependencies(vicon_bridge ${PROJECT_NAME}_gencpp)
-
+    vicon_bridge_lib
+    ${catkin_LIBRARIES}
+)
+add_dependencies(vicon_bridge ${PROJECT_NAME}_generate_messages_cpp)
 
 add_executable(calibrate src/calibrate_segment.cpp)
 target_link_libraries(calibrate
    ${catkin_LIBRARIES}
 )
-add_dependencies(calibrate ${PROJECT_NAME}_gencpp)
+add_dependencies(calibrate ${PROJECT_NAME}_generate_messages_cpp)
 
 add_executable(tf_distort src/tf_distort.cpp)
 target_link_libraries(tf_distort
    ${catkin_LIBRARIES}
    ${Boost_LIBRARIES}
 )
-add_dependencies(tf_distort ${PROJECT_NAME}_gencpp ${PROJECT_NAME}_gencfg)
+add_dependencies(tf_distort ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencfg)
 
 add_executable(testclient src/ViconDataStreamSDK_CPPTest.cpp)
 target_link_libraries(testclient 
     ${VICON_SDK_LIBRARY}
     ${Boost_LIBRARIES}
 )
+add_dependencies(testclient ${PROJECT_NAME}_generate_messages_cpp)
 
-install(TARGETS vicon_bridge_lib
-        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(TARGETS 
+    vicon_bridge_lib
+    vicon_bridge
+    calibrate
+    tf_distort
+    testclient
+    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 install(FILES vicon_bridge_nodelet.xml
-        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

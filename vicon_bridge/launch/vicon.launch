@@ -1,7 +1,24 @@
 <launch>
+
+    <!-- Node: logfile_publisher--> 
+    <node pkg="vicon_bridge" type="logfile_publisher.py" name="logfile" output="screen">
+	    </node>
+
+	<!-- Node: loger--> 
+    <node pkg="vicon_bridge" type="loger.py" name="loger" output="screen">
+	    </node>
+		
+    <!-- Node: vicon_bridge-->
 	<node pkg="vicon_bridge" type="vicon_bridge" name="vicon" output="screen">
 		<param name="stream_mode" value="ClientPull" type="str" />
 		<param name="datastream_hostport" value="10.157.163.191:801" type="str"/>
 		<param name="tf_ref_frame_id" value="/world" type="str" />
 		</node>
+
+	<!-- Node: vicon--> 
+    <node pkg="vicon_bridge" type="vicon.py" name="vicon_core" output="screen">
+	    <param name="model" value="cf23" type="str" />
+		<param name="sim" value="True" type="bool" />
+	    </node>
+		
 </launch>

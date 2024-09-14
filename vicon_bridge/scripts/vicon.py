@@ -247,8 +247,8 @@ class ViconCoordinates(object):
             self.delta_t_0_ave_old = self.delta_t_0_ave
             self.delta_t_0_ave += (delta_t_0 - self.delta_t_0_ave_old) / self.counter
             self.delta_t_0_var = (self.delta_t_0_var * (self.counter-2) + (delta_t_0 - self.delta_t_0_ave_old) * (delta_t_0 - self.delta_t_0_ave)) / (self.counter-1)
-            rospy.loginfo("ave time since start of last cycle: %f. " %self.delta_t_0_ave)
-            rospy.loginfo("var of time since start of last cycle: %f. " %math.sqrt(self.delta_t_0_var))
+            rospy.loginfo("ave time since start of last cycle (inkl. sleep): %f. " %self.delta_t_0_ave)
+            rospy.loginfo("var of time since start of last cycle (inkl. sleep): %f. " %math.sqrt(self.delta_t_0_var))
         "----------for test----------"
 
 

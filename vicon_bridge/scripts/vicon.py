@@ -444,7 +444,7 @@ if __name__ == '__main__':
     publish_rate = 60
 
     # define type of observer
-    observer = 'EKF' # 'simple' / 'EKF' / 'UKF
+    observer = 'simple' # 'simple' / 'EKF' / 'UKF
     
     # define file path of identified model
     model_file = '/home/haocheng/Experiments/figure_8/merge_model.json'
@@ -462,6 +462,7 @@ if __name__ == '__main__':
         raise EnvironmentError('No model parameter specified.')
     rospy.loginfo('Vicon model name: {0}'.format(MODEL))
 
+    '''
     # use simulation channel or real-run channel
     sim_param = rospy.search_param('sim')
     if sim_param:
@@ -472,6 +473,10 @@ if __name__ == '__main__':
             rospy.loginfo('Channel of Vicon node: REAL-RUN channel')
     else:
         raise EnvironmentError('No simulation parameter specified.')
+    '''
+
+    sim = False
+
 
     # Tuning parameters for Kalman Filter
     # increase in tau -> increase in c or d -> trust measurements less

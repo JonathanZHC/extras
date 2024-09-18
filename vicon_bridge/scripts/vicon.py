@@ -319,9 +319,6 @@ class ViconCoordinates(object):
         elif self.estimator.observer == 'EKF':
             # EKF predict & update
             self.estimator.EKF_update()
-        elif self.estimator.observer == 'UKF':
-            # UKF predict & update
-            self.estimator.UKF_update()
 
         self.publish_vicon(self.vicon)
 
@@ -387,7 +384,7 @@ class ViconCoordinates(object):
             vel = self.estimator.vel.copy()
             acc = self.estimator.acc.copy()
             quat = self.estimator.quat.copy()
-            oemga_g = self.estimator.omega_g.copy()
+            omega_g = self.estimator.omega_g.copy()
 
         time = rospy.Time.now()
         state.header.stamp = time
@@ -397,11 +394,11 @@ class ViconCoordinates(object):
         state.vel = vel
         state.acc = acc
 
-        state.quat = apply_omega_to_quat(quat, oemga_g, dt)
+        state.quat = apply_omega_to_quat(quat, omega_g, dt)
         state.euler = tf.euler_from_quaternion(quat)
 
-        state.omega_g = oemga_g
-        state.omega_b = global_to_body(quat, oemga_g)
+        state.omega_g = omega_g
+        state.omega_b = global_to_body(quat, omega_g)
 
         print(state)
 
@@ -444,10 +441,10 @@ if __name__ == '__main__':
     publish_rate = 60
 
     # define type of observer
-    observer = 'simple' # 'simple' / 'EKF' / 'UKF
+    observer = 'simple' # 'simple' / 'EKF'
     
-    # define file path of identified model
-    model_file = '/home/haocheng/Experiments/figure_8/merge_model.json'
+    # define file path of identified double integrator model
+    model_file = '/home/haocheng/Experiments/figure_8/double_integrator_merge_model.json'
 
 
 
@@ -462,7 +459,7 @@ if __name__ == '__main__':
         raise EnvironmentError('No model parameter specified.')
     rospy.loginfo('Vicon model name: {0}'.format(MODEL))
 
-    '''
+    
     # use simulation channel or real-run channel
     sim_param = rospy.search_param('sim')
     if sim_param:
@@ -473,10 +470,10 @@ if __name__ == '__main__':
             rospy.loginfo('Channel of Vicon node: REAL-RUN channel')
     else:
         raise EnvironmentError('No simulation parameter specified.')
-    '''
-
+    
+    
     sim = False
-
+    
 
     # Tuning parameters for Kalman Filter
     # increase in tau -> increase in c or d -> trust measurements less

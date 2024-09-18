@@ -30,8 +30,7 @@ import numpy as np
 import tf.transformations as tf
 from quaternions import (omega_from_quat_quat, apply_omega_to_quat, global_to_body)
 from scipy.spatial.transform import Rotation as R
-from filterpy.kalman import UnscentedKalmanFilter as UKF
-from filterpy.kalman import MerweScaledSigmaPoints
+
 
 from vicon_bridge.msg import StateData
 
@@ -77,7 +76,7 @@ class StateEstimator(object):
         self.state_access_lock = Lock()
 
         # define type of observer
-        self.observer = observer_type  # 'simple' / 'EKF' / 'UKF'
+        self.observer = observer_type  # 'simple' / 'EKF'
         # define file path of identified model
         self.model_file = model_file  # json file with identified parameter
 
@@ -89,6 +88,7 @@ class StateEstimator(object):
         # Initialize rotations.
         self.quat = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float64)
         self.euler = np.array([0.0, 0.0, 0.0], dtype=np.float64)
+        self.euler_rate = np.array([0.0, 0.0, 0.0], dtype=np.float64)
         self.omega_g = np.array([0.0, 0.0, 0.0], dtype=np.float64)
 
         # Initialize measurements
@@ -97,6 +97,7 @@ class StateEstimator(object):
         self.acc_meas = np.array([0.0, 0.0, 0.0], dtype=np.float64)
         self.quat_meas = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float64)
         self.euler_meas = np.array([0.0, 0.0, 0.0], dtype=np.float64)
+        self.euler_rate_meas = np.array([0.0, 0.0, 0.0], dtype=np.float64)
         self.omega_g_meas = np.array([0.0, 0.0, 0.0], dtype=np.float64)
 
         # Initialize old measurements
@@ -104,6 +105,7 @@ class StateEstimator(object):
         self.vel_old = np.array([0.0, 0.0, 0.0], dtype=np.float64)
         self.quat_old = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float64)
         self.euler_old = np.array([0.0, 0.0, 0.0], dtype=np.float64)
+        self.euler_rate_old = np.array([0.0, 0.0, 0.0], dtype=np.float64)
 
         # Correction to align vicon frame with body frame
         self.quat_corr = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float64)
@@ -121,15 +123,15 @@ class StateEstimator(object):
             model = json.load(file)
 
         self.params_acc = model['params_acc']
-        self.params_pitch_rate = model['params_pitch_rate']
-        self.params_roll_rate = model['params_roll_rate']
-        self.params_yaw_rate = model['params_yaw_rate']
+        self.params_pitch_rate_rate = model['params_pitch_rate_rate']
+        self.params_roll_rate_rate = model['params_roll_rate_rate']
+        self.params_yaw_rate_rate = model['params_yaw_rate_rate']
 
         # Define output matrix
-        self.G = np.eye(9)
+        self.G = np.eye(12)
 
         # Initialize the state vector
-        self.x_old = np.concatenate((self.pos, self.vel, self.euler))
+        self.x_old = np.concatenate((self.pos, self.vel, self.euler, self.euler_rate))
 
         # Initialize the input vector
         self.input_CMD = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
@@ -143,16 +145,18 @@ class StateEstimator(object):
              self.tau_est_rot_dot) = filter_parameters
 
         elif self.observer == 'EKF':
+
+            "---test---"
             # Define weight matrix
             # parameter tuning: Q smaller -> depend more on prediction
-            self.Q = np.eye(9) * 0.03
-            self.R = np.eye(9) * 0.1
+            self.Q = np.eye(12) * 0.03
+            self.R = np.eye(12) * 0.1
 
             # Initialize the prediction matrix
-            self.P_old = np.eye(9) * 1 # Initialized by collected intial data before
+            self.P_old = np.eye(12) * 1 # Initialized by collected intial data before
 
             # Initialize the state transfer matrix (df/dx for x0)
-            self.F_old = np.eye(9)
+            self.F_old = np.eye(12)
             self.F_old[0, 3] += 1
             self.F_old[1, 4] += 1
             self.F_old[2, 5] += 1
@@ -160,17 +164,7 @@ class StateEstimator(object):
             self.F_old[-2, -2] += self.params_roll_rate[0][0]
             self.F_old[-1, -1] += self.params_yaw_rate[0][0]
             self.F_old = self.F_old * self.dt
-
-        elif self.observer == 'UKF':
-            # Define sigma points
-            points = MerweScaledSigmaPoints(9, alpha=0.1, beta=2., kappa=0)
-            self.ukf = UKF(dim_x=9, dim_z=9, fx=self.x_update, hx=self.y_update, dt=self.dt, points=points)
-
-            self.ukf.x = self.x_old
-            self.ukf.P = np.eye(9) * 1
-
-            self.ukf.Q = np.eye(9) * 0.04
-            self.ukf.R = np.eye(9) * 0.1
+            "---test---"
 
     @property
     def rpy(self):
@@ -211,7 +205,7 @@ class StateEstimator(object):
         # Calculate time difference, update time
         self.dt = self.time_meas - self.time
 
-        if self.observer in ['EKF', 'UKF']:
+        if self.observer == 'EKF':
             # Get the commanded input from controller
             self.input_CMD = input
 
@@ -245,25 +239,13 @@ class StateEstimator(object):
             self.omega_g_meas = omega_from_quat_quat(self.quat_old, self.quat_meas, self.dt)
 
         elif self.observer == 'EKF':
+            "---test---"
             # Numeric derivatives: Compute velocities # used in 'self.x_meas'
             self.vel_meas = (self.pos_meas - self.pos_old) / self.dt
             # combine pos, vel, euler angles into state vector & output vector
             self.x_meas = np.concatenate((self.pos_meas, self.vel_meas, self.euler_meas))
             self.y_meas = self.G @ self.x_meas
-            
-        elif self.observer == 'UKF':
-            # Numeric derivatives: Comput velocities
-            self.vel_meas = (self.pos_meas - self.pos_old) / self.dt
-            
-            # combine pos, vel, euler angles into state vector & output vector
-            self.x_meas = np.concatenate((self.pos_meas, self.vel_meas, self.euler_meas))
-            self.y_meas = self.G @ self.x_meas
-            
-            # Update old measurements (make a copy)
-            self.pos_old[:] = self.pos_meas
-            self.vel_old[:] = self.vel_meas
-            self.quat_old[:] = self.quat_meas
-            self.x_old[:] = self.x_meas
+            "---test---"
 
 
     def prior_update(self):
@@ -306,6 +288,7 @@ class StateEstimator(object):
         self.vel_old[:] = self.vel_meas
         self.quat_old[:] = self.quat_meas
 
+    "---test---"
     def EKF_update(self):
         # Don't compute finite difference for impossibly small time differencesc
         # EG: for first input
@@ -356,42 +339,6 @@ class StateEstimator(object):
         self.pos_old[:] = self.pos
         self.vel_old[:] = self.vel
         self.quat_old[:] = self.quat
-
-    def UKF_update(self):
-        if self.dt <= 1e-15:
-            return
-
-        with self.state_access_lock:
-            self.ukf.predict()
-            self.ukf.update(self.y_meas)
-
-            self.x_post = self.ukf.x
-
-            # Measurement updates
-            self.pos = self.x_post[:3]
-            self.vel = self.x_post[3:6]
-            self.acc = (self.vel - self.vel_old) / self.dt
-
-            self.euler = self.x_post[6:]
-            self.quat = self.quat_back
-
-            # Two quaternions for every rotation, make sure we take
-            # the one that is consistent with previous measurements
-            if np.dot(self.quat_old, self.quat) < 0.0:
-                self.quat = -self.quat
-            # Make sure that numerical errors don't pile up
-            self.quat /= np.linalg.norm(self.quat)
-
-            # Measurement updates (omega)
-            self.omega_g = omega_from_quat_quat(self.quat_old,
-                                                self.quat,
-                                                self.dt)
-
-        # Update old value for next iteration (make a copy)
-        self.time = self.time_meas
-        #self.pos_old[:] = self.pos
-        #self.vel_old[:] = self.vel
-        #self.quat_old[:] = self.quat
 
     def F_update(self):
         # Initialize F
@@ -467,14 +414,5 @@ class StateEstimator(object):
     def y_update(self, x):
         # update output
         return x
-
-    '''
-    def check_euler(self, euler):
-        for angle in euler:
-            if abs(angle) > (2*math.pi/3) and abs(angle) < math.pi:
-                angle = np.sign(angle)* (math.pi - abs(angle))
-            
-        return euler
-    '''
-
+    "---test---"
     

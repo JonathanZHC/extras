@@ -28,7 +28,7 @@ import json
 import math
 import numpy as np
 import tf.transformations as tf
-from quaternions import (omega_from_quat_quat, apply_omega_to_quat, global_to_body)
+from quaternions import (omega_from_quat_quat, apply_omega_to_quat, global_to_body, omega_b_to_euler_dot)
 from scipy.spatial.transform import Rotation as R
 from filterpy.kalman import UnscentedKalmanFilter as UKF
 from filterpy.kalman import MerweScaledSigmaPoints
@@ -194,6 +194,11 @@ class StateEstimator(object):
     def omega_b(self):
         """Return the body angular velocity."""
         return global_to_body(self.quat, self.omega_g)
+    
+    @property
+    def euler_dot(self):
+        """Calculate euler_dot based on omega_b and rpy."""
+        return omega_b_to_euler_dot(self.rpy, self.omega_b)
 
     def get_new_measurement(self, time, position, quaternion, input, dt=None):
         """Get a new measurement of position and orientation.

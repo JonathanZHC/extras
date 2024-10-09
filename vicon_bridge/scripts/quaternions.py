@@ -159,3 +159,30 @@ def body_to_global(q, vec):
     # tf.quaternion_matrix(q)[:3,:3] is the matrix from body to global frame
     # that matrix is multiplied by omega
     return np.dot(tf.quaternion_matrix(q)[:3, :3], vec)
+
+
+def omega_b_to_euler_dot(euler, omega_b):
+    """
+    Convert 
+
+    Parameters:
+    - euler: euelr angle, [phi, theta, psi], with rad as unit
+    - omega_b: omega under body frame, [p, q, r], with rad/s as unit
+
+    Returns:
+    - euler_dot: time derivatives of euler angles, [phi_dot, theta_dot, psi_dot], with rad/s as unit
+    """
+    phi, theta, psi = euler
+
+    # Back transformation matrix J
+    J = np.array([
+        [1, np.sin(phi) * np.tan(theta), np.cos(phi) * np.tan(theta)],
+        [0, np.cos(phi), -np.sin(phi)],
+        [0, np.sin(phi) / np.cos(theta), np.cos(phi) / np.cos(theta)]
+    ])
+
+    # Calculate time derivatives of euler angles
+    euler_dot = np.dot(J, omega_b)
+
+    return euler_dot
+

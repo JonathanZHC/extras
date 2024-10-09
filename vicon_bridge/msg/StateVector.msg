@@ -16,6 +16,9 @@ float64[3] acc
 # Euler Angles (roll,pitch,yaw) [rad]
 float64[3] euler
 
+# Time derivatives of euler Angles (roll,pitch,yaw) [rad/s]
+float64[3] euler_dot
+
 # Angular Velocity [rad/s]
 float64[3] omega_g
 float64[3] omega_b

@@ -445,7 +445,7 @@ if __name__ == '__main__':
     publish_rate = 60
 
     # define type of observer
-    observer = 'simple' # 'simple' / 'EKF' / 'UKF
+    observer = 'EKF' # 'simple' / 'EKF'
     
     # define file path of identified model
     model_file = '/home/haocheng/Experiments/figure_8/merge_model.json'
@@ -476,7 +476,7 @@ if __name__ == '__main__':
         raise EnvironmentError('No simulation parameter specified.')
     '''
     
-    sim = False
+    sim = True
 
     # Tuning parameters for Kalman Filter
     # increase in tau -> increase in c or d -> trust measurements less

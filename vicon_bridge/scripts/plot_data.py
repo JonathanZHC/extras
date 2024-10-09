@@ -31,6 +31,9 @@ class Plotter:
             index = np.where(raw_data[:, DataVarIndex.STATUS] == status.value)
             raw_data = raw_data[index]
             estimated_data = estimated_data[index]
+        else:
+            max_rows = estimated_data.shape[0]
+            raw_data = raw_data [:max_rows, :]
 
         # Subtract the start time from the time values
         start_time = raw_data[0, DataVarIndex.TIME]
@@ -136,9 +139,9 @@ if __name__ == "__main__":
                     DataVarIndex.PITCH,    
                     DataVarIndex.YAW,                
                     #DataVarIndex.CMD_THRUST,
-                    #DataVarIndex.ROLL_RATE,
-                    #DataVarIndex.YAW_RATE,
-                    #DataVarIndex.PITCH_RATE,
+                    DataVarIndex.ROLL_RATE,
+                    DataVarIndex.YAW_RATE,
+                    DataVarIndex.PITCH_RATE,
                     ] 
 
     # Specify the data by setting the file_path

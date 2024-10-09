@@ -418,6 +418,7 @@ class ViconCoordinates(object):
         state.acc = self.estimator.acc
         state.quat = self.estimator.quat
         state.euler = self.estimator.rpy
+        state.euler_dot = self.estimator.euler_dot
         state.omega_g = self.estimator.omega_g
         state.omega_b = self.estimator.omega_b
 
@@ -441,7 +442,7 @@ if __name__ == '__main__':
     publish_rate = 60
 
     # define type of observer
-    observer = 'simple' # 'simple' / 'EKF'
+    observer = 'EKF' # 'simple' / 'EKF'
     
     # define file path of identified double integrator model
     model_file = '/home/haocheng/Experiments/figure_8/double_integrator_merge_model.json'
@@ -472,7 +473,7 @@ if __name__ == '__main__':
         raise EnvironmentError('No simulation parameter specified.')
     
     
-    sim = False
+    sim = True
     
 
     # Tuning parameters for Kalman Filter

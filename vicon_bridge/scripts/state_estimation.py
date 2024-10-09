@@ -88,7 +88,7 @@ class StateEstimator(object):
         # Initialize rotations.
         self.quat = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float64)
         self.euler = np.array([0.0, 0.0, 0.0], dtype=np.float64)
-        self.euler_rate = np.array([0.0, 0.0, 0.0], dtype=np.float64)
+        self.euler_dot = np.array([0.0, 0.0, 0.0], dtype=np.float64)
         self.omega_g = np.array([0.0, 0.0, 0.0], dtype=np.float64)
 
         # Initialize measurements
@@ -97,7 +97,7 @@ class StateEstimator(object):
         self.acc_meas = np.array([0.0, 0.0, 0.0], dtype=np.float64)
         self.quat_meas = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float64)
         self.euler_meas = np.array([0.0, 0.0, 0.0], dtype=np.float64)
-        self.euler_rate_meas = np.array([0.0, 0.0, 0.0], dtype=np.float64)
+        self.euler_dot_meas = np.array([0.0, 0.0, 0.0], dtype=np.float64)
         self.omega_g_meas = np.array([0.0, 0.0, 0.0], dtype=np.float64)
 
         # Initialize old measurements
@@ -105,7 +105,7 @@ class StateEstimator(object):
         self.vel_old = np.array([0.0, 0.0, 0.0], dtype=np.float64)
         self.quat_old = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float64)
         self.euler_old = np.array([0.0, 0.0, 0.0], dtype=np.float64)
-        self.euler_rate_old = np.array([0.0, 0.0, 0.0], dtype=np.float64)
+        self.euler_dot_old = np.array([0.0, 0.0, 0.0], dtype=np.float64)
 
         # Correction to align vicon frame with body frame
         self.quat_corr = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float64)
@@ -131,7 +131,7 @@ class StateEstimator(object):
         self.G = np.eye(12)
 
         # Initialize the state vector
-        self.x_old = np.concatenate((self.pos, self.vel, self.euler, self.euler_rate))
+        self.x_old = np.concatenate((self.pos, self.vel, self.euler, self.euler_dot))
 
         # Initialize the input vector
         self.input_CMD = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
@@ -160,9 +160,18 @@ class StateEstimator(object):
             self.F_old[0, 3] += 1
             self.F_old[1, 4] += 1
             self.F_old[2, 5] += 1
-            self.F_old[-3, -3] += self.params_pitch_rate[0][0]
-            self.F_old[-2, -2] += self.params_roll_rate[0][0]
-            self.F_old[-1, -1] += self.params_yaw_rate[0][0]
+
+            self.F_old[6, 9] += 1
+            self.F_old[7, 10] += 1
+            self.F_old[8, 11] += 1
+
+            self.F_old[-3, 6] += self.params_roll_rate_rate[0][0]
+            self.F_old[-2, 7] += self.params_pitch_rate_rate[0][0]
+            self.F_old[-1, 8] += self.params_yaw_rate_rate[0][0]
+            self.F_old[-3, -3] += self.params_roll_rate_rate[1][0]
+            self.F_old[-2, -2] += self.params_pitch_rate_rate[1][0]
+            self.F_old[-1, -1] += self.params_yaw_rate_rate[1][0]
+
             self.F_old = self.F_old * self.dt
             "---test---"
 
@@ -242,8 +251,9 @@ class StateEstimator(object):
             "---test---"
             # Numeric derivatives: Compute velocities # used in 'self.x_meas'
             self.vel_meas = (self.pos_meas - self.pos_old) / self.dt
+            self.euler_dot_meas = (self.euler_meas - self.euler_old) / self.dt
             # combine pos, vel, euler angles into state vector & output vector
-            self.x_meas = np.concatenate((self.pos_meas, self.vel_meas, self.euler_meas))
+            self.x_meas = np.concatenate((self.pos_meas, self.vel_meas, self.euler_meas, self.euler_dot_meas))
             self.y_meas = self.G @ self.x_meas
             "---test---"
 
@@ -306,7 +316,7 @@ class StateEstimator(object):
             self.K = self.P_pri @ np.transpose(self.G) @ np.linalg.inv(self.G @ self.P_pri @ np.transpose(self.G) + self.R)
 
             # Corrector
-            self.P_post = (np.eye(9) - self.K @ self.G) @ self.P_pri
+            self.P_post = (np.eye(12) - self.K @ self.G) @ self.P_pri
             self.x_post = self.x_pri + self.K @ (self.y_meas - self.G @ self.x_pri)
 
             # Measurement updates
@@ -314,7 +324,8 @@ class StateEstimator(object):
             self.vel = self.x_post[3:6]
             self.acc = (self.vel - self.vel_old) / self.dt
 
-            self.euler = self.x_post[6:]
+            self.euler = self.x_post[6:9]
+            self.euler_dot = self.x_post[9:]
             self.quat = self.quat_back
 
             # Two quaternions for every rotation, make sure we take
@@ -342,7 +353,7 @@ class StateEstimator(object):
 
     def F_update(self):
         # Initialize F
-        F = np.eye(9)
+        F = np.zeros((12, 12))
 
         # use identified model to calculate collective thrust
         transformed_thrust = self.params_acc[0] * self.input_CMD[3] + self.params_acc[1]
@@ -351,14 +362,6 @@ class StateEstimator(object):
         F[0, 3] += 1
         F[1, 4] += 1
         F[2, 5] += 1
-        
-        '''
-        F[3, 7] += transformed_thrust * np.cos(self.x_old[7])
-        F[4, 7] += transformed_thrust * np.sin(self.x_old[6]) * np.sin(self.x_old[7])
-        F[4, 6] += -transformed_thrust * np.cos(self.x_old[6]) * np.cos(self.x_old[7])
-        F[5, 7] += -transformed_thrust * np.cos(self.x_old[6]) * np.sin(self.x_old[7])
-        F[5, 6] += -transformed_thrust * np.sin(self.x_old[6]) * np.cos(self.x_old[7])
-        '''
         
         F[3, 6] += transformed_thrust * (- np.sin(self.x_old[6]) * np.sin(self.x_old[7]) * np.cos(self.x_old[8]) + np.cos(self.x_old[6]) * np.sin(self.x_old[8]))
         F[4, 6] += transformed_thrust * (- np.sin(self.x_old[6]) * np.sin(self.x_old[7]) * np.sin(self.x_old[8]) - np.cos(self.x_old[6]) * np.cos(self.x_old[8]))
@@ -369,19 +372,26 @@ class StateEstimator(object):
         F[3, 8] += transformed_thrust * (- np.cos(self.x_old[6]) * np.sin(self.x_old[7]) * np.sin(self.x_old[8]) + np.sin(self.x_old[6]) * np.cos(self.x_old[8]))
         F[4, 8] += transformed_thrust * (np.cos(self.x_old[6]) * np.sin(self.x_old[7]) * np.cos(self.x_old[8]) + np.sin(self.x_old[6]) * np.sin(self.x_old[8]))
         F[5, 8] += 0
-        
 
-        F[-3, -3] += self.params_roll_rate[0][0]
-        F[-2, -2] += self.params_pitch_rate[0][0]
-        F[-1, -1] += self.params_yaw_rate[0][0]
+        F[6, -3] = 1
+        F[7, -2] = 1
+        F[8, -1] = 1
 
-        F = F * self.dt
+        F[-3, 6] += self.params_roll_rate_rate[0][0]
+        F[-2, 7] += self.params_pitch_rate_rate[0][0]
+        F[-1, 8] += self.params_yaw_rate_rate[0][0]
+        F[-3, -3] += self.params_roll_rate_rate[1][0]
+        F[-2, -2] += self.params_pitch_rate_rate[1][0]
+        F[-1, -1] += self.params_yaw_rate_rate[1][0]
+
+        F = F * self.dt + np.eye(12)
 
         return F
 
     def x_update(self, x, dt):
+
         # 状态转移函数
-        f_x = np.zeros(9)
+        f_x = np.zeros(12)
 
         # use identified model to calculate collective thrust
         transformed_thrust = self.params_acc[0] * self.input_CMD[3] + self.params_acc[1]
@@ -391,20 +401,18 @@ class StateEstimator(object):
         f_x[1] = x[4]
         f_x[2] = x[5]
         
-        '''
-        f_x[3] = transformed_thrust * np.sin(x[7])
-        f_x[4] = -transformed_thrust * np.sin(x[6]) * np.cos(x[7])
-        f_x[5] = transformed_thrust * np.cos(x[6]) * np.cos(x[7]) - self.GRAVITY
-        '''
-        
         f_x[3] = transformed_thrust * (np.cos(x[6]) * np.sin(x[7]) * np.cos(x[8]) + np.sin(x[6]) * np.sin(x[8]))
         f_x[4] = transformed_thrust * (np.cos(x[6]) * np.sin(x[7]) * np.sin(x[8]) - np.sin(x[6]) * np.cos(x[8]))
         f_x[5] = transformed_thrust * np.cos(x[6]) * np.cos(x[7]) - self.GRAVITY
-        
 
-        f_x[6] = self.params_roll_rate[0][0] * x[6] + self.params_roll_rate[1][0] * self.input_CMD[0]
-        f_x[7] = self.params_pitch_rate[0][0] * x[7] + self.params_pitch_rate[1][0] * self.input_CMD[1]
-        f_x[8] = self.params_yaw_rate[0][0] * x[8] + self.params_yaw_rate[1][0] * self.input_CMD[2]
+        f_x[6] = x[9]
+        f_x[7] = x[10]
+        f_x[8] = x[11]
+
+        f_x[9] = self.params_roll_rate_rate[0][0] * x[6] + self.params_roll_rate_rate[1][0] * x[9] + self.params_roll_rate_rate[2][0] * self.input_CMD[0]
+        f_x[10] = self.params_pitch_rate_rate[0][0] * x[7] + self.params_pitch_rate_rate[1][0] * x[10] + self.params_pitch_rate_rate[2][0] * self.input_CMD[1]
+        f_x[11] = self.params_yaw_rate_rate[0][0] * x[8] + self.params_yaw_rate_rate[1][0] * x[11] + self.params_yaw_rate_rate[2][0] * self.input_CMD[2]
+        
 
         # Update x_next according to system dynamic
         x_next = x + dt * f_x

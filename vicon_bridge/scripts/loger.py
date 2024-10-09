@@ -75,9 +75,9 @@ class StateVectorListener:
             msg.vel[0], 
             msg.vel[1], 
             msg.vel[2],
-            msg.omega_g[0], 
-            msg.omega_g[1], 
-            msg.omega_g[2],
+            msg.euler_dot[0], 
+            msg.euler_dot[1], 
+            msg.euler_dot[2],
         ]])
         
         self.data = np.vstack((self.data, msg_array))
@@ -207,6 +207,6 @@ if __name__ == '__main__':
     #listener.data_cleaning()
     listener.save_data(save_filepath)
     listener.difference_pretreatment()
-    #listener.difference_plotting() # can only call after function difference_pretreatment()
+    listener.difference_plotting() # can only call after function difference_pretreatment()
     rospy.spin()
 

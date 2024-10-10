@@ -99,7 +99,7 @@ class StateVectorListener:
         if len(right_diff) == 0:
             raise ValueError("All time differences are zero or below the threshold.")
         # Calculate average dt
-        dt = round(np.nanmin(np.abs([right_diff])), 3)
+        dt = round(np.average(np.abs([right_diff])), 5)
         rospy.loginfo("Average time diff: {}".format(dt))
 
         # Generate correct timeline
@@ -213,4 +213,3 @@ if __name__ == '__main__':
     listener.save_data(save_filepath)
     #listener.difference_pretreatment()
     #listener.difference_plotting() # can only call after function difference_pretreatment()
-

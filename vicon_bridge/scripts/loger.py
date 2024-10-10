@@ -13,13 +13,29 @@ class StateVectorListener:
 
         self.num_columns = len(DataVarIndex)
 
+        self.nunm_states = 13
+
         # Initialize all data variables
-        self.data = np.empty((0, 13))
+        self.data = np.empty((0, self.nunm_states))
         self.raw_data = np.empty((0, self.num_columns))
         self.noise_data = np.empty((0, self.num_columns))
 
         # Initialize difference rate : avg |(estimated - raw) / (noise_affected - raw)|
-        self.difference_avg = np.zeros(13)
+        self.difference_avg = np.zeros(self.nunm_states)
+
+        # Select which indices to do interpolation
+        self.interpolate_indices = [
+            DataVarIndex.TIME,
+            DataVarIndex.POS_X, 
+            DataVarIndex.POS_Y, 
+            DataVarIndex.POS_Z,
+            DataVarIndex.ROLL,
+            DataVarIndex.PITCH,
+            DataVarIndex.YAW,
+            DataVarIndex.VEL_X, 
+            DataVarIndex.VEL_Y, 
+            DataVarIndex.VEL_Z,
+        ]
 
         # Noise affected set
         self.noise_affected_indices = [
@@ -76,7 +92,15 @@ class StateVectorListener:
         # Calculate dt from DataVarIndex.TIME (smallest time difference)
         right_diff = np.diff(self.data[:, DataVarIndex.TIME], append=np.nan)
         right_diff = right_diff[:-1]
-        dt = round(np.nanmin(np.abs([right_diff])), 3)
+        # Set a thresfold to filt off the nearly-0 time diffs
+        min_threshold = 1e-6
+        right_diff = right_diff[np.abs(right_diff) > min_threshold]
+        # Check if the array is void after filtering
+        if len(right_diff) == 0:
+            raise ValueError("All time differences are zero or below the threshold.")
+        # Calculate average dt
+        dt = round(np.average(np.abs([right_diff])), 5)
+        rospy.loginfo("Average time diff: {}".format(dt))
 
         # Generate correct timeline
         first_time = self.data[0, DataVarIndex.TIME]
@@ -107,7 +131,7 @@ class StateVectorListener:
         pd_data[DataVarIndex.STATUS.name] = pd_data[DataVarIndex.STATUS.name].apply(lambda s: Status(s).name)
         pd_data.to_csv(path, index=False)
         
-        print("Data recieved and saved to: ", path)
+        rospy.loginfo("Data recieved and saved to: {}".format(path))
 
         return path
 
@@ -183,10 +207,9 @@ if __name__ == '__main__':
     save_filepath = logfile_path.replace('.csv', '_estimated_data_from_observer.csv')
 
     listener = StateVectorListener()
-    rospy.sleep(30.0)
+    rospy.sleep(40.0)
 
     listener.data_cleaning()
     listener.save_data(save_filepath)
     #listener.difference_pretreatment()
     #listener.difference_plotting() # can only call after function difference_pretreatment()
-

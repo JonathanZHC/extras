@@ -93,7 +93,6 @@ class StateEstimator(object):
         self.acc_meas = np.array([0.0, 0.0, 0.0], dtype=np.float64)
         self.quat_meas = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float64)
         self.euler_meas = np.array([0.0, 0.0, 0.0], dtype=np.float64)
-        self.omega_g_meas = np.array([0.0, 0.0, 0.0], dtype=np.float64)
 
         # Initialize old measurements
         self.pos_old = np.array([0.0, 0.0, 0.0], dtype=np.float64)
@@ -132,7 +131,7 @@ class StateEstimator(object):
 
         # Define weight matrix
         # parameter tuning: Q smaller -> depend more on prediction
-        self.Q = np.eye(9) * 0.03
+        self.Q = np.eye(9) * 0.04
         self.R = np.eye(9) * 0.1
 
         # Initialize the prediction matrix
@@ -245,9 +244,9 @@ class StateEstimator(object):
             # Measurement updates
             self.pos = self.x_post[:3]
             self.vel = self.x_post[3:6]
-            self.acc = (self.vel - self.vel_old) / self.dt
-
             self.euler = self.x_post[6:]
+
+            self.acc = (self.vel - self.vel_old) / self.dt
             self.quat = self.quat_back
 
             # Two quaternions for every rotation, make sure we take

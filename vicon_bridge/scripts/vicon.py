@@ -269,7 +269,8 @@ class ViconCoordinates(object):
         delta_t_1 = t2 - t1
         self.delta_t_1_ave_old = self.delta_t_1_ave
         self.delta_t_1_ave += (delta_t_1 - self.delta_t_1_ave_old) / self.counter
-        self.delta_t_1_var = (self.delta_t_1_var * (self.counter-2) + (delta_t_1 - self.delta_t_1_ave_old) * (delta_t_1 - self.delta_t_1_ave)) / (self.counter-1)
+        if self.counter > 1:
+            self.delta_t_1_var = (self.delta_t_1_var * (self.counter-2) + (delta_t_1 - self.delta_t_1_ave_old) * (delta_t_1 - self.delta_t_1_ave)) / (self.counter-1)
         rospy.loginfo("ave cycle time for period 1 of estimator: %f. " %self.delta_t_1_ave)
         rospy.loginfo("var of cycle time for period 1 of estimator: %f. " %math.sqrt(self.delta_t_1_var))
         "----------for test----------"

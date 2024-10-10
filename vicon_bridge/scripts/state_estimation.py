@@ -137,7 +137,7 @@ class StateEstimator(object):
         "---test---"
         # Define weight matrix
         # parameter tuning: Q smaller -> depend more on prediction
-        self.Q = np.eye(12) * 0.03
+        self.Q = np.eye(12) * 0.1
         self.R = np.eye(12) * 0.1
 
         # Initialize the prediction matrix

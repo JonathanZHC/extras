@@ -102,7 +102,7 @@ class Plotter:
 
             else:
                 # Plot the actual values
-                #ax.plot(raw_data[:, DataVarIndex.TIME], raw_data[:, i], "--", label='simple estimator', color=self.colors[1], linewidth=1)
+                ax.plot(raw_data[:, DataVarIndex.TIME], raw_data[:, i], "--", label='simple estimator', color=self.colors[1], linewidth=1)
                 ax.plot(raw_data[:, DataVarIndex.TIME], estimated_data[:, i], color=self.colors[0], label='EKF', linewidth=1.5)
                     
                 # set axis labels

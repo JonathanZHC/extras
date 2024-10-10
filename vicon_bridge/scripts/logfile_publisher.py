@@ -250,7 +250,7 @@ class LogfilePublisher(object):
 
 if __name__ == '__main__':
     # Initialize parameters of publisher class
-    logfile_path = '/home/haocheng/Experiments/figure_8/data_20240604_145319.csv'
+    logfile_path = '/home/haocheng/Experiments/figure_8/data_20240930_151508.csv'
     publish_rate = 60
 
     # Create an instance of publisher class

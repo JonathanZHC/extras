@@ -31,8 +31,7 @@ import math
 
 import numpy
 import tf.transformations as tf
-from quaternions import (apply_omega_to_quat,
-                                                global_to_body)
+from quaternions import (apply_omega_to_quat, global_to_body)
 
 from vicon_bridge.srv import GetState
 from std_msgs.msg import Empty
@@ -449,6 +448,21 @@ if __name__ == '__main__':
     
     # define file path of identified model
     model_file = '/home/haocheng/Experiments/figure_8/merge_model.json'
+    
+    # Define using publish/subscribe topic for simulation or real_run
+    sim = True
+    '''
+    # use simulation channel or real-run channel
+    sim_param = rospy.search_param('sim')
+    if sim_param:
+        sim = rospy.get_param(sim_param)
+        if sim:
+            rospy.loginfo('Channel of Vicon node: SIMULATION channel')
+        else:
+            rospy.loginfo('Channel of Vicon node: REAL-RUN channel')
+    else:
+        raise EnvironmentError('No simulation parameter specified.')
+    '''
 
 
 
@@ -462,21 +476,6 @@ if __name__ == '__main__':
     else:
         raise EnvironmentError('No model parameter specified.')
     rospy.loginfo('Vicon model name: {0}'.format(MODEL))
-    
-    '''
-    # use simulation channel or real-run channel
-    sim_param = rospy.search_param('sim')
-    if sim_param:
-        sim = rospy.get_param(sim_param)
-        if sim:
-            rospy.loginfo('Channel of Vicon node: SIMULATION channel')
-        else:
-            rospy.loginfo('Channel of Vicon node: REAL-RUN channel')
-    else:
-        raise EnvironmentError('No simulation parameter specified.')
-    '''
-    
-    sim = True
 
     # Tuning parameters for Kalman Filter
     # increase in tau -> increase in c or d -> trust measurements less

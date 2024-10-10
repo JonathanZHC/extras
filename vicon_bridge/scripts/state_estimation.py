@@ -347,14 +347,6 @@ class StateEstimator(object):
         F[1, 4] += 1
         F[2, 5] += 1
         
-        '''
-        F[3, 7] += transformed_thrust * np.cos(self.x_old[7])
-        F[4, 7] += transformed_thrust * np.sin(self.x_old[6]) * np.sin(self.x_old[7])
-        F[4, 6] += -transformed_thrust * np.cos(self.x_old[6]) * np.cos(self.x_old[7])
-        F[5, 7] += -transformed_thrust * np.cos(self.x_old[6]) * np.sin(self.x_old[7])
-        F[5, 6] += -transformed_thrust * np.sin(self.x_old[6]) * np.cos(self.x_old[7])
-        '''
-        
         F[3, 6] += transformed_thrust * (- np.sin(self.x_old[6]) * np.sin(self.x_old[7]) * np.cos(self.x_old[8]) + np.cos(self.x_old[6]) * np.sin(self.x_old[8]))
         F[4, 6] += transformed_thrust * (- np.sin(self.x_old[6]) * np.sin(self.x_old[7]) * np.sin(self.x_old[8]) - np.cos(self.x_old[6]) * np.cos(self.x_old[8]))
         F[5, 6] += - transformed_thrust * np.sin(self.x_old[6]) * np.cos(self.x_old[7])
@@ -364,7 +356,6 @@ class StateEstimator(object):
         F[3, 8] += transformed_thrust * (- np.cos(self.x_old[6]) * np.sin(self.x_old[7]) * np.sin(self.x_old[8]) + np.sin(self.x_old[6]) * np.cos(self.x_old[8]))
         F[4, 8] += transformed_thrust * (np.cos(self.x_old[6]) * np.sin(self.x_old[7]) * np.cos(self.x_old[8]) + np.sin(self.x_old[6]) * np.sin(self.x_old[8]))
         F[5, 8] += 0
-        
 
         F[-3, -3] += self.params_roll_rate[0][0]
         F[-2, -2] += self.params_pitch_rate[0][0]
@@ -375,7 +366,7 @@ class StateEstimator(object):
         return F
 
     def x_update(self, x, dt):
-        # 状态转移函数
+        # State transfer function
         f_x = np.zeros(9)
 
         # use identified model to calculate collective thrust
@@ -402,14 +393,5 @@ class StateEstimator(object):
     def y_update(self, x):
         # update output
         return x
-
-    '''
-    def check_euler(self, euler):
-        for angle in euler:
-            if abs(angle) > (2*math.pi/3) and abs(angle) < math.pi:
-                angle = np.sign(angle)* (math.pi - abs(angle))
-            
-        return euler
-    '''
 
     

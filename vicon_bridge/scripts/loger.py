@@ -9,7 +9,7 @@ from utils import DataVarIndex, Status, load_data
 import matplotlib.pyplot as plt
 
 class StateVectorListener:
-    def __init__(self, raw_data_filepath, noise_data_filepath):
+    def __init__(self):
 
         self.num_columns = len(DataVarIndex)
 
@@ -58,10 +58,6 @@ class StateVectorListener:
         rospy.init_node('state_vector_listener', anonymous=True)
         rospy.Subscriber('estimated_state_sim', numpy_msg(StateVector), self.callback)
 
-        # Read the raw test data & noise affected data from the csv file
-        self.raw_data = load_data(raw_data_filepath)[1:, :]
-        self.noise_data = load_data(noise_data_filepath)[1:, :]
-
     def callback(self, msg):
         # Trandform message from StateVector into array
         msg_array = np.array([[
@@ -78,7 +74,6 @@ class StateVectorListener:
         ]])
         
         self.data = np.vstack((self.data, msg_array))
-        
         #rospy.loginfo("Received message: %s", msg)
 
     def data_cleaning(self):
@@ -127,6 +122,7 @@ class StateVectorListener:
 
         return path
 
+    '''
     def difference_pretreatment(self):
 
         # Judge whether 3 data variables have same column numbers
@@ -169,14 +165,14 @@ class StateVectorListener:
             original_noise = self.noise[:, index]
             Y_lim = 1.2 * max(max(abs(difference)), max(abs(original_noise)))
 
-            # 计算均值和方差
+            # Calculate mean and variance
             mean_noise = np.mean(original_noise)
             std_noise = np.std(original_noise)
 
-            # 创建子图
+            # Create subplot
             fig, ax = plt.subplots(1, 1, figsize=(18, 8), sharex=False)
 
-            # 绘制第一组噪声数据
+            # Draw
             ax.plot(time, difference, label='Difference')
             ax.plot(time, original_noise, label='Noise', linestyle = '--', linewidth = 0.6)
             ax.axhline(mean_noise, color='r', linestyle='--', label='Mean')
@@ -184,26 +180,24 @@ class StateVectorListener:
             ax.axhline(mean_noise - 3 * std_noise, color='g', linestyle='--', label='Mean - 3 Std Dev')
             ax.set_title('Difference: estimated_state - real_state')
             ax.legend()
-            ax.set_ylim([-Y_lim, Y_lim])  # 设置Y轴范围
+            ax.set_ylim([-Y_lim, Y_lim])  # set range for y axis
 
-            # 显示图形
+            # Display plotting
             plt.tight_layout()
             plt.show()
+    '''
 
 
 if __name__ == '__main__':
 
-    logfile_path = '/home/haocheng/Experiments/figure_8/data_20240604_145319.csv'
+    logfile_path = '/home/haocheng/Experiments/figure_8/data_20240930_151508.csv'
     save_filepath = logfile_path.replace('.csv', '_estimated_data_from_observer.csv')
-    raw_data_filepath = logfile_path.replace('.csv', '_raw_data_from_vicon.csv')
-    noise_data_filepath = logfile_path.replace('.csv', '_raw_data_add_noise_from_vicon.csv')
 
-    listener = StateVectorListener(raw_data_filepath, noise_data_filepath)
+    listener = StateVectorListener()
     rospy.sleep(30.0)
 
-    #listener.data_cleaning()
+    listener.data_cleaning()
     listener.save_data(save_filepath)
-    listener.difference_pretreatment()
+    #listener.difference_pretreatment()
     #listener.difference_plotting() # can only call after function difference_pretreatment()
-    rospy.spin()
 

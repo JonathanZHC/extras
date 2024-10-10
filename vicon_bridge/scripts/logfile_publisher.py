@@ -29,12 +29,10 @@ from vicon_bridge.msg import Command
 
 class LogfilePublisher(object):
 
-    def __init__(self, logfile_path, interpolated_data_path, noise_affected_data_path, publish_rate = 200, generate_new_data = False):
+    def __init__(self, logfile_path, publish_rate = 200):
         """Initialization."""
 
         self.file_path = logfile_path
-        self.interpolated_data_path = interpolated_data_path
-        self.noise_affected_data_path = noise_affected_data_path
         
         self.publish_rate = publish_rate
         self.data = []  # To store log data
@@ -60,18 +58,22 @@ class LogfilePublisher(object):
             DataVarIndex.CMD_PITCH,
             DataVarIndex.CMD_YAW,
             DataVarIndex.CMD_THRUST,
-        ]
-        # Position set
-        self.position_indices = [
-            DataVarIndex.POS_X, 
-            DataVarIndex.POS_Y, 
-            DataVarIndex.POS_Z,
-        ]
-        # Euler angle set
-        self.euler_indices = [
-            DataVarIndex.ROLL,
-            DataVarIndex.PITCH,
-            DataVarIndex.YAW,
+            DataVarIndex.DES_POS_X,
+            DataVarIndex.DES_POS_Y,
+            DataVarIndex.DES_POS_Z,
+            DataVarIndex.DES_ROLL,
+            DataVarIndex.DES_PITCH,
+            DataVarIndex.DES_YAW,
+            DataVarIndex.DES_VEL_X,
+            DataVarIndex.DES_VEL_Y,
+            DataVarIndex.DES_VEL_Z,
+            DataVarIndex.STATUS,
+            DataVarIndex.VICON_POS_X,
+            DataVarIndex.VICON_POS_Y,
+            DataVarIndex.VICON_POS_Z,
+            DataVarIndex.VICON_ROLL,
+            DataVarIndex.VICON_PITCH,
+            DataVarIndex.VICON_YAW,
         ]
 
         # Define information of noise
@@ -87,20 +89,8 @@ class LogfilePublisher(object):
         self.pub_input = rospy.Publisher('logdata_input', Command, queue_size=1)
         #rate = rospy.Rate(self.publish_rate)  # May conflict with function 'Wait until timestamp matched'
 
-        if generate_new_data:
-            # Load logdata from logfile
-            self.load_data_from_logfile(self.file_path)
-            # Raise the frequency of logdata from 60Hz to self.publish_rate
-            self.frequency_raised = True #self.raise_frequency() OR self.frequency_raised = True
-            # Save interpolated data to .csv file
-            #self.save_data(self.interpolated_data_path)
-            # Add noise to raw data
-            #self.add_noise()
-            self.save_data(self.noise_affected_data_path)
-
-        else:
-            # Load predefined noise-affected data from logfile
-            self.load_data_from_logfile(self.noise_affected_data_path)
+        # Load logdata from logfile
+        self.load_data_from_logfile(self.file_path)
 
         # Convert data form from StateVector to TransformStamped
         self.StateVector2TransformStamped()
@@ -119,84 +109,6 @@ class LogfilePublisher(object):
 
         # Clear all data with other indices than to be published
         self.data = self.data[:, self.interpolate_indices]
-        # Add dummy values for the rest columns
-        num_columns = len(DataVarIndex)
-        num_data_columns = self.data.shape[1]
-        dummy_data = np.zeros((self.data.shape[0], num_columns - num_data_columns))
-        self.data = np.hstack((self.data, dummy_data))
-
-    def raise_frequency(self):
-        '''
-        # Interpolate the logdata to raise the frequency from 60Hz to self.publish_rate.
-        ----------
-        Parameters
-        ----------
-        self.publish_rate : target publishing frequency (same as publishing frequency of vicon here)
-        ----------
-        self.data : 
-          - self.data[:, DataVarIndex.TIME] : float64 , ndarray
-          - self.data[:, DataVarIndex.POS_X] : float64 , ndarray
-          - self.data[:, DataVarIndex.POS_Y] : float64 , ndarray
-          - self.data[:, DataVarIndex.POS_Z] : float64 , ndarray
-          - self.data[:, DataVarIndex.ROLL] : float64 , ndarray
-          - self.data[:, DataVarIndex.PITCH] : float64 , ndarray
-          - self.data[:, DataVarIndex.YAW] : float64 , ndarray
-          - self.data[:, DataVarIndex.CMD_ROLL] : float64 , ndarray
-          - self.data[:, DataVarIndex.CMD_PITCH] : float64 , ndarray
-          - self.data[:, DataVarIndex.CMD_YAW] : float64 , ndarray
-          - self.data[:, DataVarIndex.CMD_THRUST] : float64 , ndarray
-        '''
-        original_time = self.data[:, DataVarIndex.TIME]
-
-        target_frequency = self.publish_rate 
-        self.target_interval = 1 / target_frequency
-
-        # Define new timeline for interpolation
-        start_time = self.data[0, DataVarIndex.TIME]
-        end_time = self.data[-1, DataVarIndex.TIME]
-        new_time = np.arange(start_time, end_time, self.target_interval)
-
-        interpolated_data = np.zeros((len(new_time), self.data.shape[1]))
-
-        # Do interpolation for selected indices
-        for index in self.interpolate_indices:
-            original_data = self.data[:, index]
-            interpolator = interp1d(original_time, original_data, kind='linear')
-            interpolated_data[:, index] = interpolator(new_time)
-
-        self.data = interpolated_data
-
-        self.frequency_raised = True
-
-    def save_data(self, path):
-        """Save the interpolated data to a csv file."""
-        if not self.frequency_raised:
-            raise ValueError("Data has to be interpolated to higher frequency first.")
-        
-        # Define name for new logfile
-        #interpolated_data_path = self.file_path.replace(".csv", "_raw_data_from vicon.csv")
-        
-        # Save the data to a csv file with DataVarIndex as the header
-        pd_data = pd.DataFrame(self.data, columns=[var.name for var in DataVarIndex])
-
-        # Replace the status with the actual status string
-        pd_data[DataVarIndex.STATUS.name] = pd_data[DataVarIndex.STATUS.name].apply(lambda s: Status(s).name)
-        pd_data.to_csv(path, index=False)
-        
-        print("Data interpolated and saved to: ", path)
-
-        return path
-    
-    def add_noise(self):
-        """Add noise to selected incides"""
-
-        for index in self.position_indices:
-            noise_position = np.random.normal(self.noise_mean_position, self.noise_variance_position, size = self.data[:, DataVarIndex.TIME].shape)
-            self.data[:, index] = self.data[:, index] + noise_position
-        
-        for index in self.euler_indices:
-            noise_euler = np.random.normal(self.noise_mean_euler, self.noise_variance_euler, size = self.data[:, DataVarIndex.TIME].shape)
-            self.data[:, index] = self.data[:, index] + noise_euler
 
     def StateVector2TransformStamped(self):
         """
@@ -228,9 +140,9 @@ class LogfilePublisher(object):
         """
 
         # Storage translational data
-        self.data2publish['translation_x'] = self.data[:, DataVarIndex.POS_X]
-        self.data2publish['translation_y'] = self.data[:, DataVarIndex.POS_Y]
-        self.data2publish['translation_z'] = self.data[:, DataVarIndex.POS_Z]
+        self.data2publish['translation_x'] = self.data[:, DataVarIndex.VICON_POS_X]
+        self.data2publish['translation_y'] = self.data[:, DataVarIndex.VICON_POS_Y]
+        self.data2publish['translation_z'] = self.data[:, DataVarIndex.VICON_POS_Z]
 
         # Initialize arrays for rotational data
         self.data2publish['rotation_x'] = []
@@ -240,9 +152,9 @@ class LogfilePublisher(object):
 
         # Calculate rotational data
         for entry in self.data:
-            roll = entry[DataVarIndex.ROLL]
-            pitch = entry[DataVarIndex.PITCH]
-            yaw = entry[DataVarIndex.YAW]
+            roll = entry[DataVarIndex.VICON_ROLL]
+            pitch = entry[DataVarIndex.VICON_PITCH]
+            yaw = entry[DataVarIndex.VICON_YAW]
 
             quaternion = tf.quaternion_from_euler(roll, pitch, yaw)
 
@@ -338,16 +250,11 @@ class LogfilePublisher(object):
 
 if __name__ == '__main__':
     # Initialize parameters of publisher class
-    logfile_path = '/home/haocheng/Experiments/figure_8/data_20240604_145319.csv'
-    interpolated_data_path = logfile_path.replace('.csv', '_raw_data_from_vicon.csv')
-    noise_affected_data_path = logfile_path.replace('.csv', '_raw_data_add_noise_from_vicon.csv')
+    logfile_path = '/home/haocheng/Experiments/figure_8/data_20240930_151508.csv'
     publish_rate = 60
 
-    # Choose whether generate new noise_affected_data or use noise data before
-    generate_new_data = False
-
     # Create an instance of publisher class
-    logfile_publisher = LogfilePublisher(logfile_path, interpolated_data_path, noise_affected_data_path, publish_rate, generate_new_data)
+    logfile_publisher = LogfilePublisher(logfile_path, publish_rate)
 
     # Do not exit until shutdown
     rospy.spin()

@@ -145,7 +145,7 @@ if __name__ == "__main__":
                     ] 
 
     # Specify the data by setting the file_path
-    raw_file_path = '/home/haocheng/Experiments/figure_8/data_20240604_145319.csv'
+    raw_file_path = '/home/haocheng/Experiments/figure_8/data_20240930_151508.csv'
 
     # Start plotting
     plotter = Plotter(save_fig=False) 

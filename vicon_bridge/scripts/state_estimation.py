@@ -66,7 +66,7 @@ class StateEstimator(object):
         The 4 tuning parameters for the Kalman filter
     """
 
-    def __init__(self, filter_parameters, observer_type='simple', model_file=None):
+    def __init__(self, model_file=None):
         """Initialization."""
         super(StateEstimator, self).__init__()
 
@@ -74,8 +74,6 @@ class StateEstimator(object):
         # Makes sure the service does not conflict with normal updates
         self.state_access_lock = Lock()
 
-        # define type of observer
-        self.observer = observer_type  # 'simple' / 'EKF' / 'UKF'
         # define file path of identified model
         self.model_file = model_file  # json file with identified parameter
 
@@ -132,32 +130,23 @@ class StateEstimator(object):
         # Initialize the input vector
         self.input_CMD = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
 
-        if self.observer == 'simple':
-            # Read in the parameters
-            (self.tau_est_trans,
-             self.tau_est_trans_dot,
-             self.tau_est_trans_dot_dot,
-             self.tau_est_rot,
-             self.tau_est_rot_dot) = filter_parameters
+        # Define weight matrix
+        # parameter tuning: Q smaller -> depend more on prediction
+        self.Q = np.eye(9) * 0.03
+        self.R = np.eye(9) * 0.1
 
-        elif self.observer == 'EKF':
-            # Define weight matrix
-            # parameter tuning: Q smaller -> depend more on prediction
-            self.Q = np.eye(9) * 0.03
-            self.R = np.eye(9) * 0.1
+        # Initialize the prediction matrix
+        self.P_old = np.eye(9) * 1 # Initialized by collected intial data before
 
-            # Initialize the prediction matrix
-            self.P_old = np.eye(9) * 1 # Initialized by collected intial data before
-
-            # Initialize the state transfer matrix (df/dx for x0)
-            self.F_old = np.eye(9)
-            self.F_old[0, 3] += 1
-            self.F_old[1, 4] += 1
-            self.F_old[2, 5] += 1
-            self.F_old[-3, -3] += self.params_pitch_rate[0][0]
-            self.F_old[-2, -2] += self.params_roll_rate[0][0]
-            self.F_old[-1, -1] += self.params_yaw_rate[0][0]
-            self.F_old = self.F_old * self.dt
+        # Initialize the state transfer matrix (df/dx for x0)
+        self.F_old = np.zeros((9, 9))
+        self.F_old[0, 3] += 1
+        self.F_old[1, 4] += 1
+        self.F_old[2, 5] += 1
+        self.F_old[-3, -3] += self.params_pitch_rate[0][0]
+        self.F_old[-2, -2] += self.params_roll_rate[0][0]
+        self.F_old[-1, -1] += self.params_yaw_rate[0][0]
+        self.F_old = self.F_old * self.dt + np.eye(9)
 
     @property
     def rpy(self):
@@ -203,9 +192,8 @@ class StateEstimator(object):
         # Calculate time difference, update time
         self.dt = self.time_meas - self.time
 
-        if self.observer in ['EKF', 'UKF']:
-            # Get the commanded input from controller
-            self.input_CMD = input
+        # Get the commanded input from controller
+        self.input_CMD = input
 
         # Get the translational position from VICON
         self.pos_meas = position
@@ -227,62 +215,12 @@ class StateEstimator(object):
         # EG: for first input
         if self.dt <= 1e-15:
             return
-        
-        if self.observer == 'simple':
-            # Numeric derivatives: Compute velocities
-            self.vel_meas = (self.pos_meas - self.pos_old) / self.dt
-            # Numeric derivatives: Compute accelerations
-            self.acc_meas = (self.vel_meas - self.vel_old) / self.dt
-            # Numeric derivatives: Compute angular velocity
-            self.omega_g_meas = omega_from_quat_quat(self.quat_old, self.quat_meas, self.dt)
 
-        elif self.observer == 'EKF':
-            # Numeric derivatives: Compute velocities # used in 'self.x_meas'
-            self.vel_meas = (self.pos_meas - self.pos_old) / self.dt
-            # combine pos, vel, euler angles into state vector & output vector
-            self.x_meas = np.concatenate((self.pos_meas, self.vel_meas, self.euler_meas))
-            self.y_meas = self.G @ self.x_meas
-
-
-    def prior_update(self):
-        """Predict future states using a double integrator model."""
-        # Acceleration and angular velocity are assumed constant
-        # Update position and orientation
-        self.pos += self.dt * self.vel + 0.5 * self.dt * self.dt * self.acc
-        self.vel += self.dt * self.acc
-        self.quat = apply_omega_to_quat(self.quat, self.omega_g, self.dt)
-
-
-    def measurement_update(self):
-        """Update state estimate with measurements."""
-        # NOTE: Use raw position and quaternion - no low pass filter
-        # Calculate current Kalman filter gains
-        c1 = math.exp(-self.dt / self.tau_est_trans)
-        c2 = math.exp(-self.dt / self.tau_est_trans_dot)
-        c3 = math.exp(-self.dt / self.tau_est_trans_dot_dot)
-
-        d1 = math.exp(-self.dt / self.tau_est_rot)
-        d2 = math.exp(-self.dt / self.tau_est_rot_dot)
-
-        # Wait while locked, then lock itself
-        with self.state_access_lock:
-            # Measurement updates
-            self.pos = (1.0 - c1) * self.pos_meas + c1 * self.pos
-            self.vel = (1.0 - c2) * self.vel_meas + c2 * self.vel
-            self.acc = (1.0 - c3) * self.acc_meas + c3 * self.acc
-
-            self.quat = (1.0 - d1) * self.quat_meas + d1 * self.quat
-            self.omega_g = (1.0 - d2) * self.omega_g_meas + d2 * self.omega_g
-
-            # Make sure that numerical errors don't pile up
-            self.quat /= np.linalg.norm(self.quat)
-
-        self.time = self.time_meas
-
-        # Update old measurements (make a copy)
-        self.pos_old[:] = self.pos_meas
-        self.vel_old[:] = self.vel_meas
-        self.quat_old[:] = self.quat_meas
+        # Numeric derivatives: Compute velocities # used in 'self.x_meas'
+        self.vel_meas = (self.pos_meas - self.pos_old) / self.dt
+        # combine pos, vel, euler angles into state vector & output vector
+        self.x_meas = np.concatenate((self.pos_meas, self.vel_meas, self.euler_meas))
+        self.y_meas = self.G @ self.x_meas
 
     def EKF_update(self):
         # Don't compute finite difference for impossibly small time differencesc

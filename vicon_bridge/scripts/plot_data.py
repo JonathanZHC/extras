@@ -139,9 +139,9 @@ if __name__ == "__main__":
                     DataVarIndex.PITCH,    
                     DataVarIndex.YAW,                
                     #DataVarIndex.CMD_THRUST,
-                    #DataVarIndex.ROLL_RATE,
-                    #DataVarIndex.YAW_RATE,
-                    #DataVarIndex.PITCH_RATE,
+                    DataVarIndex.ROLL_RATE,
+                    DataVarIndex.PITCH_RATE,
+                    DataVarIndex.YAW_RATE,
                     ] 
 
     # Specify the data by setting the file_path

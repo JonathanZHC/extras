@@ -66,18 +66,13 @@ class StateEstimator(object):
         The 4 tuning parameters for the Kalman filter
     """
 
-    def __init__(self, filter_parameters, observer_type='simple', model_file=None):
+    def __init__(self, filter_parameters):
         """Initialization."""
         super(StateEstimator, self).__init__()
 
         # Lock for access to state
         # Makes sure the service does not conflict with normal updates
         self.state_access_lock = Lock()
-
-        # define type of observer
-        self.observer = observer_type  # 'simple' / 'EKF' / 'UKF'
-        # define file path of identified model
-        self.model_file = model_file  # json file with identified parameter
 
         # Initialize the state variables
         self.pos = np.array([0.0, 0.0, 0.0323], dtype=np.float64) # Initialized by collected intial data before
@@ -111,53 +106,12 @@ class StateEstimator(object):
         self.time_meas = 0.0
         self.dt = 0.0
 
-        # Define Gravitational Acceleration
-        self.GRAVITY = 9.806
-
-        # Import model parameters
-        with open(self.model_file) as file:
-            model = json.load(file)
-
-        self.params_acc = model['params_acc']
-        self.params_pitch_rate = model['params_pitch_rate']
-        self.params_roll_rate = model['params_roll_rate']
-        self.params_yaw_rate = model['params_yaw_rate']
-
-        # Define output matrix
-        self.G = np.eye(9)
-
-        # Initialize the state vector
-        self.x_old = np.concatenate((self.pos, self.vel, self.euler))
-
-        # Initialize the input vector
-        self.input_CMD = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
-
-        if self.observer == 'simple':
-            # Read in the parameters
-            (self.tau_est_trans,
-             self.tau_est_trans_dot,
-             self.tau_est_trans_dot_dot,
-             self.tau_est_rot,
-             self.tau_est_rot_dot) = filter_parameters
-
-        elif self.observer == 'EKF':
-            # Define weight matrix
-            # parameter tuning: Q smaller -> depend more on prediction
-            self.Q = np.eye(9) * 0.03
-            self.R = np.eye(9) * 0.1
-
-            # Initialize the prediction matrix
-            self.P_old = np.eye(9) * 1 # Initialized by collected intial data before
-
-            # Initialize the state transfer matrix (df/dx for x0)
-            self.F_old = np.eye(9)
-            self.F_old[0, 3] += 1
-            self.F_old[1, 4] += 1
-            self.F_old[2, 5] += 1
-            self.F_old[-3, -3] += self.params_pitch_rate[0][0]
-            self.F_old[-2, -2] += self.params_roll_rate[0][0]
-            self.F_old[-1, -1] += self.params_yaw_rate[0][0]
-            self.F_old = self.F_old * self.dt
+        # Read in the parameters
+        (self.tau_est_trans,
+            self.tau_est_trans_dot,
+            self.tau_est_trans_dot_dot,
+            self.tau_est_rot,
+            self.tau_est_rot_dot) = filter_parameters
 
     @property
     def rpy(self):
@@ -203,10 +157,6 @@ class StateEstimator(object):
         # Calculate time difference, update time
         self.dt = self.time_meas - self.time
 
-        if self.observer in ['EKF', 'UKF']:
-            # Get the commanded input from controller
-            self.input_CMD = input
-
         # Get the translational position from VICON
         self.pos_meas = position
 
@@ -228,20 +178,12 @@ class StateEstimator(object):
         if self.dt <= 1e-15:
             return
         
-        if self.observer == 'simple':
-            # Numeric derivatives: Compute velocities
-            self.vel_meas = (self.pos_meas - self.pos_old) / self.dt
-            # Numeric derivatives: Compute accelerations
-            self.acc_meas = (self.vel_meas - self.vel_old) / self.dt
-            # Numeric derivatives: Compute angular velocity
-            self.omega_g_meas = omega_from_quat_quat(self.quat_old, self.quat_meas, self.dt)
-
-        elif self.observer == 'EKF':
-            # Numeric derivatives: Compute velocities # used in 'self.x_meas'
-            self.vel_meas = (self.pos_meas - self.pos_old) / self.dt
-            # combine pos, vel, euler angles into state vector & output vector
-            self.x_meas = np.concatenate((self.pos_meas, self.vel_meas, self.euler_meas))
-            self.y_meas = self.G @ self.x_meas
+        # Numeric derivatives: Compute velocities
+        self.vel_meas = (self.pos_meas - self.pos_old) / self.dt
+        # Numeric derivatives: Compute accelerations
+        self.acc_meas = (self.vel_meas - self.vel_old) / self.dt
+        # Numeric derivatives: Compute angular velocity
+        self.omega_g_meas = omega_from_quat_quat(self.quat_old, self.quat_meas, self.dt)
 
 
     def prior_update(self):
@@ -283,115 +225,3 @@ class StateEstimator(object):
         self.pos_old[:] = self.pos_meas
         self.vel_old[:] = self.vel_meas
         self.quat_old[:] = self.quat_meas
-
-    def EKF_update(self):
-        # Don't compute finite difference for impossibly small time differencesc
-        # EG: for first input
-        if self.dt <= 1e-15:
-            return
-
-        # Wait while locked, then lock itself
-        with self.state_access_lock:
-
-            # Predictor
-            self.P_pri = self.F_old @ self.P_old @ np.transpose(self.F_old) + self.Q
-            self.x_pri = self.x_update(self.x_old, self.dt)
-
-            # solve kalman gain
-            self.K = self.P_pri @ np.transpose(self.G) @ np.linalg.inv(self.G @ self.P_pri @ np.transpose(self.G) + self.R)
-
-            # Corrector
-            self.P_post = (np.eye(9) - self.K @ self.G) @ self.P_pri
-            self.x_post = self.x_pri + self.K @ (self.y_meas - self.G @ self.x_pri)
-
-            # Measurement updates
-            self.pos = self.x_post[:3]
-            self.vel = self.x_post[3:6]
-            self.acc = (self.vel - self.vel_old) / self.dt
-
-            self.euler = self.x_post[6:]
-            self.quat = self.quat_back
-
-            # Two quaternions for every rotation, make sure we take
-            # the one that is consistent with previous measurements
-            if np.dot(self.quat_old, self.quat) < 0.0:
-                self.quat = -self.quat
-            # Make sure that numerical errors don't pile up
-            self.quat /= np.linalg.norm(self.quat)
-
-            # Measurement updates (omega)
-            self.omega_g = omega_from_quat_quat(self.quat_old,
-                                                self.quat,
-                                                self.dt)
-
-        # Update old value for next iteration (make a copy)
-        self.time = self.time_meas
-        # different from simple one, we use predicted value but not the observed value to do the update
-        self.P_old = self.P_post
-        self.x_old = self.x_post
-        self.F_old = self.F_update()
-
-        self.pos_old[:] = self.pos
-        self.vel_old[:] = self.vel
-        self.quat_old[:] = self.quat
-
-    def F_update(self):
-        # Initialize F
-        F = np.zeros((9, 9))
-
-        # use identified model to calculate collective thrust
-        transformed_thrust = self.params_acc[0] * self.input_CMD[3] + self.params_acc[1]
-
-        # Calculate df/dx
-        F[0, 3] += 1
-        F[1, 4] += 1
-        F[2, 5] += 1
-        
-        F[3, 6] += transformed_thrust * (- np.sin(self.x_old[6]) * np.sin(self.x_old[7]) * np.cos(self.x_old[8]) + np.cos(self.x_old[6]) * np.sin(self.x_old[8]))
-        F[4, 6] += transformed_thrust * (- np.sin(self.x_old[6]) * np.sin(self.x_old[7]) * np.sin(self.x_old[8]) - np.cos(self.x_old[6]) * np.cos(self.x_old[8]))
-        F[5, 6] += - transformed_thrust * np.sin(self.x_old[6]) * np.cos(self.x_old[7])
-        F[3, 7] += transformed_thrust * np.cos(self.x_old[6]) * np.cos(self.x_old[7]) * np.cos(self.x_old[8])
-        F[4, 7] += transformed_thrust * np.cos(self.x_old[6]) * np.cos(self.x_old[7]) * np.sin(self.x_old[8])
-        F[5, 7] += - transformed_thrust * np.cos(self.x_old[6]) * np.sin(self.x_old[7])
-        F[3, 8] += transformed_thrust * (- np.cos(self.x_old[6]) * np.sin(self.x_old[7]) * np.sin(self.x_old[8]) + np.sin(self.x_old[6]) * np.cos(self.x_old[8]))
-        F[4, 8] += transformed_thrust * (np.cos(self.x_old[6]) * np.sin(self.x_old[7]) * np.cos(self.x_old[8]) + np.sin(self.x_old[6]) * np.sin(self.x_old[8]))
-        F[5, 8] += 0
-
-        F[-3, -3] += self.params_roll_rate[0][0]
-        F[-2, -2] += self.params_pitch_rate[0][0]
-        F[-1, -1] += self.params_yaw_rate[0][0]
-
-        F = F * self.dt + np.eye(9)
-
-        return F
-
-    def x_update(self, x, dt):
-        # State transfer function
-        f_x = np.zeros(9)
-
-        # use identified model to calculate collective thrust
-        transformed_thrust = self.params_acc[0] * self.input_CMD[3] + self.params_acc[1]
-
-        # Update f_x value
-        f_x[0] = x[3]
-        f_x[1] = x[4]
-        f_x[2] = x[5]
-        
-        f_x[3] = transformed_thrust * (np.cos(x[6]) * np.sin(x[7]) * np.cos(x[8]) + np.sin(x[6]) * np.sin(x[8]))
-        f_x[4] = transformed_thrust * (np.cos(x[6]) * np.sin(x[7]) * np.sin(x[8]) - np.sin(x[6]) * np.cos(x[8]))
-        f_x[5] = transformed_thrust * np.cos(x[6]) * np.cos(x[7]) - self.GRAVITY
-
-        f_x[6] = self.params_roll_rate[0][0] * x[6] + self.params_roll_rate[1][0] * self.input_CMD[0]
-        f_x[7] = self.params_pitch_rate[0][0] * x[7] + self.params_pitch_rate[1][0] * self.input_CMD[1]
-        f_x[8] = self.params_yaw_rate[0][0] * x[8] + self.params_yaw_rate[1][0] * self.input_CMD[2]
-
-        # Update x_next according to system dynamic
-        x_next = x + dt * f_x
-
-        return x_next
-
-    def y_update(self, x):
-        # update output
-        return x
-
-    

@@ -87,13 +87,13 @@ class ViconCoordinates(object):
             Fetch current state of object in vicon.
     """
 
-    def __init__(self, filter_parameters, observer_type = 'simple', model_file = None, publish_rate = 200, sim = True):
+    def __init__(self, filter_parameters, publish_rate = 200, sim = True):
         """Initializaiton."""
         super(ViconCoordinates, self).__init__()
 
         # Lock for access to state
         # Makes sure the service does not conflict with normal updates
-        self.estimator = StateEstimator(filter_parameters, observer_type, model_file)
+        self.estimator = StateEstimator(filter_parameters)
 
         model_name = MODEL + '/' + MODEL
 
@@ -306,21 +306,11 @@ class ViconCoordinates(object):
         "----------for test----------"
 
 
-
-
-        # Use various filter / the model knowledge / the measured data to estimate the real state
-        if self.estimator.observer == 'simple':
-            # Predict future states (double integrator)
-            # dt is not always constant, can't do it after publish_vicon()
-            self.estimator.prior_update()
-            # Update with measurements
-            self.estimator.measurement_update()
-        elif self.estimator.observer == 'EKF':
-            # EKF predict & update
-            self.estimator.EKF_update()
-        elif self.estimator.observer == 'UKF':
-            # UKF predict & update
-            self.estimator.UKF_update()
+        # Predict future states (double integrator)
+        # dt is not always constant, can't do it after publish_vicon()
+        self.estimator.prior_update()
+        # Update with measurements
+        self.estimator.measurement_update()
 
         self.publish_vicon(self.vicon)
 
@@ -420,7 +410,7 @@ class ViconCoordinates(object):
         state.acc = self.estimator.acc
         state.quat = self.estimator.quat
         state.euler = self.estimator.rpy
-        state.euler_dot = self.estimator.omega_g #self.estimator.euler_dot
+        state.euler_dot = self.estimator.euler_dot
         state.omega_g = self.estimator.omega_g
         state.omega_b = self.estimator.omega_b
 
@@ -442,12 +432,6 @@ if __name__ == '__main__':
 
     # Define publish rate
     publish_rate = 60
-
-    # define type of observer
-    observer = 'EKF' # 'simple' / 'EKF'
-    
-    # define file path of identified model
-    model_file = '/home/haocheng/Experiments/figure_8/merge_model.json'
     
     # Define using publish/subscribe topic for simulation or real_run
     sim = True
@@ -463,8 +447,6 @@ if __name__ == '__main__':
     else:
         raise EnvironmentError('No simulation parameter specified.')
     '''
-
-
 
     # Initialize the ROS node
     rospy.init_node('vicon_state_estimation')
@@ -497,7 +479,7 @@ if __name__ == '__main__':
                                       tau_est_trans_dot,
                                       tau_est_trans_dot_dot,
                                       tau_est_rot,
-                                      tau_est_rot_dot), observer, model_file, publish_rate, sim)
+                                      tau_est_rot_dot), publish_rate, sim)
 
     # Do not exit until shutdown
     rospy.spin()

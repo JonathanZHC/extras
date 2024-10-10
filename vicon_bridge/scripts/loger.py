@@ -14,26 +14,12 @@ class StateVectorListener:
         self.num_columns = len(DataVarIndex)
 
         # Initialize all data variables
-        self.data = np.empty((0, 10))
+        self.data = np.empty((0, 13))
         self.raw_data = np.empty((0, self.num_columns))
         self.noise_data = np.empty((0, self.num_columns))
 
         # Initialize difference rate : avg |(estimated - raw) / (noise_affected - raw)|
-        self.difference_avg = np.zeros(10)
-
-        # Select which indices to do interpolation
-        self.interpolate_indices = [
-            DataVarIndex.TIME,
-            DataVarIndex.POS_X, 
-            DataVarIndex.POS_Y, 
-            DataVarIndex.POS_Z,
-            DataVarIndex.ROLL,
-            DataVarIndex.PITCH,
-            DataVarIndex.YAW,
-            DataVarIndex.VEL_X, 
-            DataVarIndex.VEL_Y, 
-            DataVarIndex.VEL_Z,
-        ]
+        self.difference_avg = np.zeros(13)
 
         # Noise affected set
         self.noise_affected_indices = [
@@ -71,6 +57,9 @@ class StateVectorListener:
             msg.vel[0], 
             msg.vel[1], 
             msg.vel[2],
+            msg.euler_dot[0],
+            msg.euler_dot[1],
+            msg.euler_dot[2],
         ]])
         
         self.data = np.vstack((self.data, msg_array))

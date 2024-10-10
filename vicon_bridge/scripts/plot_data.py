@@ -102,7 +102,7 @@ class Plotter:
 
             else:
                 # Plot the actual values
-                ax.plot(raw_data[:, DataVarIndex.TIME], raw_data[:, i], "--", label='simple estimator', color=self.colors[1], linewidth=1)
+                #ax.plot(raw_data[:, DataVarIndex.TIME], raw_data[:, i], "--", label='simple estimator', color=self.colors[1], linewidth=1)
                 ax.plot(raw_data[:, DataVarIndex.TIME], estimated_data[:, i], color=self.colors[0], label='EKF', linewidth=1.5)
                     
                 # set axis labels
@@ -139,9 +139,9 @@ if __name__ == "__main__":
                     DataVarIndex.PITCH,    
                     DataVarIndex.YAW,                
                     #DataVarIndex.CMD_THRUST,
-                    #DataVarIndex.ROLL_RATE,
-                    #DataVarIndex.YAW_RATE,
-                    #DataVarIndex.PITCH_RATE,
+                    DataVarIndex.ROLL_RATE,
+                    DataVarIndex.PITCH_RATE,
+                    DataVarIndex.YAW_RATE,
                     ] 
 
     # Specify the data by setting the file_path

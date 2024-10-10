@@ -32,23 +32,62 @@ class DataVarIndex(IntEnum):
     DES_POS_X = 17
     DES_POS_Y = 18
     DES_POS_Z = 19
-    DES_YAW = 20
-    DES_VEL_X = 21
-    DES_VEL_Y = 22
-    DES_VEL_Z = 23
-    STATUS = 24  # One of the following: "TAKEOFF", "LAND", "TRACK_TRAJ"
-    VICON_POS_X = 25
-    VICON_POS_Y = 26
-    VICON_POS_Z = 27
-    VICON_ROLL = 28
-    VICON_PITCH = 29
-    VICON_YAW = 30
-    ACC_X = 31
-    ACC_Y = 32
-    ACC_Z = 33
-    ROLL_ACC = 34
-    PITCH_ACC = 35
-    YAW_ACC = 36
+    DES_ROLL = 20
+    DES_PITCH = 21
+    DES_YAW = 22
+    DES_VEL_X = 23
+    DES_VEL_Y = 24
+    DES_VEL_Z = 25
+    STATUS = 26  # One of the following: "TAKEOFF", "LAND", "TRACK_TRAJ"
+    VICON_POS_X = 27
+    VICON_POS_Y = 28
+    VICON_POS_Z = 29
+    VICON_ROLL = 30
+    VICON_PITCH = 31
+    VICON_YAW = 32
+    ACC_X = 33
+    ACC_Y = 34
+    ACC_Z = 35
+    ROLL_ACC = 36
+    PITCH_ACC = 37
+    YAW_ACC = 38
+
+    "----------for test----------"
+    # to display the predicted state, 
+    # can only choose 1 state at same time, 
+    # don't need to change variable name
+    x_0 = 39
+    x_1 = 40
+    x_2 = 41
+    x_3 = 42
+    x_4 = 43
+    x_5 = 44
+    x_6 = 45
+    x_7 = 46
+    x_8 = 47
+    x_9 = 48
+    x_10 = 49
+    x_11 = 50
+    x_12 = 51
+    x_13 = 52
+    x_14 = 53
+    x_15 = 54
+    x_16 = 55
+    x_17 = 56
+    x_18 = 57
+    x_19 = 58
+    x_20 = 59
+    x_21 = 60
+    x_22 = 61
+    x_23 = 62
+    x_24 = 63
+    x_25 = 64
+    x_26 = 65
+    x_27 = 66
+    x_28 = 67
+    x_29 = 68
+    x_30 = 69
+    "----------for test----------"
 
 
 var_bounds = {
@@ -66,6 +105,7 @@ class Status(IntEnum):
     VERTICAL = 4
     INTERPOLATE = 5
     HORIZONTAL = 6
+    STATIC_OBSV = 7
 
 
 match_status = {
@@ -76,6 +116,7 @@ match_status = {
         Status.VERTICAL.name: Status.VERTICAL,
         Status.INTERPOLATE.name: Status.INTERPOLATE,
         Status.HORIZONTAL.name: Status.HORIZONTAL,
+        Status.STATIC_OBSV.name: Status.STATIC_OBSV,
         }
 
 

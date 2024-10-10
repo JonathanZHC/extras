@@ -88,13 +88,13 @@ class ViconCoordinates(object):
             Fetch current state of object in vicon.
     """
 
-    def __init__(self, filter_parameters, observer_type = 'simple', model_file = None, publish_rate = 200, sim = True):
+    def __init__(self, model_file = None, publish_rate = 200, sim = True):
         """Initializaiton."""
         super(ViconCoordinates, self).__init__()
 
         # Lock for access to state
         # Makes sure the service does not conflict with normal updates
-        self.estimator = StateEstimator(filter_parameters, observer_type, model_file)
+        self.estimator = StateEstimator(model_file)
 
         model_name = MODEL + '/' + MODEL
 
@@ -310,15 +310,8 @@ class ViconCoordinates(object):
 
 
         # Use various filter / the model knowledge / the measured data to estimate the real state
-        if self.estimator.observer == 'simple':
-            # Predict future states (double integrator)
-            # dt is not always constant, can't do it after publish_vicon()
-            self.estimator.prior_update()
-            # Update with measurements
-            self.estimator.measurement_update()
-        elif self.estimator.observer == 'EKF':
-            # EKF predict & update
-            self.estimator.EKF_update()
+        # EKF predict & update
+        self.estimator.EKF_update()
 
         self.publish_vicon(self.vicon)
 
@@ -440,14 +433,25 @@ if __name__ == '__main__':
 
     # Define publish rate
     publish_rate = 60
-
-    # define type of observer
-    observer = 'EKF' # 'simple' / 'EKF'
     
     # define file path of identified double integrator model
     model_file = '/home/haocheng/Experiments/figure_8/double_integrator_merge_model.json'
 
-
+    # Use communication topic for simulation or real_run
+    sim = True
+    
+    '''
+    # use simulation channel or real-run channel
+    sim_param = rospy.search_param('sim')
+    if sim_param:
+        sim = rospy.get_param(sim_param)
+        if sim:
+            rospy.loginfo('Channel of Vicon node: SIMULATION channel')
+        else:
+            rospy.loginfo('Channel of Vicon node: REAL-RUN channel')
+    else:
+        raise EnvironmentError('No simulation parameter specified.')
+    '''
 
     # Initialize the ROS node
     rospy.init_node('vicon_state_estimation')
@@ -460,43 +464,8 @@ if __name__ == '__main__':
         raise EnvironmentError('No model parameter specified.')
     rospy.loginfo('Vicon model name: {0}'.format(MODEL))
 
-    
-    # use simulation channel or real-run channel
-    sim_param = rospy.search_param('sim')
-    if sim_param:
-        sim = rospy.get_param(sim_param)
-        if sim:
-            rospy.loginfo('Channel of Vicon node: SIMULATION channel')
-        else:
-            rospy.loginfo('Channel of Vicon node: REAL-RUN channel')
-    else:
-        raise EnvironmentError('No simulation parameter specified.')
-    
-    
-    sim = True
-    
-
-    # Tuning parameters for Kalman Filter
-    # increase in tau -> increase in c or d -> trust measurements less
-    tau_est_trans = rospy.get_param('~tauEstTrans', 0.0001)
-    tau_est_trans_dot = rospy.get_param('~tauEstTransDot', 0.007)
-    tau_est_trans_dot_dot = rospy.get_param('~tauEstTransDotDot', 0.09)
-    tau_est_rot = rospy.get_param('~tauEstRot', 0.005)
-    tau_est_rot_dot = rospy.get_param('~tauEstRotDot', 0.07)
-
-    # Make sure the parameters are set if default values used
-    rospy.set_param('~tauEstTrans', tau_est_trans)
-    rospy.set_param('~tauEstTransDot', tau_est_trans_dot)
-    rospy.set_param('~tauEstTransDotDot', tau_est_trans_dot_dot)
-    rospy.set_param('~tauEstRot', tau_est_rot)
-    rospy.set_param('~tauEstRotDot', tau_est_rot_dot)
-
     # Create an instance of ViconCoordinates
-    current_state = ViconCoordinates((tau_est_trans,
-                                      tau_est_trans_dot,
-                                      tau_est_trans_dot_dot,
-                                      tau_est_rot,
-                                      tau_est_rot_dot), observer, model_file, publish_rate, sim)
+    current_state = ViconCoordinates(model_file, publish_rate, sim)
 
     # Do not exit until shutdown
     rospy.spin()

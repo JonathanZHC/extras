@@ -33,7 +33,7 @@ class Plotter:
             estimated_data = estimated_data[index]
         else:
             max_rows = estimated_data.shape[0]
-            raw_data = raw_data [:max_rows, :]
+            raw_data = raw_data[:max_rows, :]
 
         # Subtract the start time from the time values
         start_time = raw_data[0, DataVarIndex.TIME]
@@ -102,7 +102,7 @@ class Plotter:
 
             else:
                 # Plot the actual values
-                ax.plot(raw_data[:, DataVarIndex.TIME], raw_data[:, i], "--", label='simple estimator', color=self.colors[1], linewidth=1)
+                #ax.plot(raw_data[:, DataVarIndex.TIME], raw_data[:, i], "--", label='simple estimator', color=self.colors[1], linewidth=1)
                 ax.plot(raw_data[:, DataVarIndex.TIME], estimated_data[:, i], color=self.colors[0], label='EKF', linewidth=1.5)
                     
                 # set axis labels
@@ -140,12 +140,12 @@ if __name__ == "__main__":
                     DataVarIndex.YAW,                
                     #DataVarIndex.CMD_THRUST,
                     DataVarIndex.ROLL_RATE,
-                    DataVarIndex.YAW_RATE,
                     DataVarIndex.PITCH_RATE,
+                    DataVarIndex.YAW_RATE,
                     ] 
 
     # Specify the data by setting the file_path
-    raw_file_path = '/home/haocheng/Experiments/figure_8/data_20240604_145319.csv'
+    raw_file_path = '/home/haocheng/Experiments/figure_8/data_20240930_151508.csv'
 
     # Start plotting
     plotter = Plotter(save_fig=False) 

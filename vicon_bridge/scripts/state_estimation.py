@@ -31,6 +31,8 @@ import tf.transformations as tf
 from quaternions import (omega_from_quat_quat, apply_omega_to_quat, global_to_body, omega_b_to_euler_dot)
 from scipy.spatial.transform import Rotation as R
 
+from scipy.signal import butter, lfilter, lfilter_zi
+
 from vicon_bridge.msg import StateData
 
 
@@ -112,6 +114,24 @@ class StateEstimator(object):
             self.tau_est_trans_dot_dot,
             self.tau_est_rot,
             self.tau_est_rot_dot) = filter_parameters
+        
+        "------ for test ------"
+        # Set up a 4-order Butterworth low-pass filter
+        self.sampling_freq = 60  # sampling frequency
+        self.cutoff_freq = 3  # cut-off frequency
+        self.filter_order = 4
+        
+        # Define the filter parameter
+        self.b, self.a = butter(self.filter_order, self.cutoff_freq / (self.sampling_freq / 2), btype='low')
+
+        # Define a initial_value of filter state
+        initial_value = 0
+        
+        # Initialize the filter state
+        self.zi_roll = lfilter_zi(self.b, self.a) * initial_value
+        self.zi_pitch = lfilter_zi(self.b, self.a) * initial_value
+        self.zi_yaw = lfilter_zi(self.b, self.a) * initial_value
+        "------ for test ------"
 
     @property
     def rpy(self):
@@ -139,7 +159,21 @@ class StateEstimator(object):
     @property
     def euler_dot(self):
         """Calculate euler_dot based on omega_b and rpy."""
-        return omega_b_to_euler_dot(self.rpy, self.omega_b)
+        
+        "------ for test ------"
+        euler_dot_raw = omega_b_to_euler_dot(self.rpy, self.omega_b)
+        
+        # filt each component
+        filtered_roll, self.zi_roll = lfilter(self.b, self.a, [euler_dot_raw[0]], zi=self.zi_roll)
+        filtered_pitch, self.zi_pitch = lfilter(self.b, self.a, [euler_dot_raw[1]], zi=self.zi_pitch)
+        filtered_yaw, self.zi_yaw = lfilter(self.b, self.a, [euler_dot_raw[2]], zi=self.zi_yaw)
+        
+        "------ for test ------"
+
+        return np.array([filtered_roll[0], filtered_pitch[0], filtered_yaw[0]])
+        return euler_dot_raw
+
+    #?????? TODO: also filter over acc and add back to vel and pos to get a smoother estimation ??????
 
     def get_new_measurement(self, time, position, quaternion, input, dt=None):
         """Get a new measurement of position and orientation.

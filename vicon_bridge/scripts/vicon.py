@@ -434,7 +434,7 @@ if __name__ == '__main__':
     publish_rate = 60
     
     # Define using publish/subscribe topic for simulation or real_run
-    sim = True
+    sim = False
     '''
     # use simulation channel or real-run channel
     sim_param = rospy.search_param('sim')

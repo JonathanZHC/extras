@@ -418,6 +418,9 @@ class ViconCoordinates(object):
         # Publish the estimated state
         self.pub_state.publish(state)
 
+        rospy.loginfo(f"estimated position: {state.pos}")
+        rospy.loginfo(f"estimated pose: {state.euler}")
+
         # For backwards compatibility...
         state_old_format = state_vector_to_data(state)
 

@@ -111,7 +111,7 @@ class StateEstimator(object):
         # Initialize time..at first time step trusts measurements to 100%
         self.time = 0.0
         self.time_meas = 0.0
-        self.dt = 0.0
+        self.dt = 1 / 60
 
         # Define Gravitational Acceleration
         self.GRAVITY = 9.806
@@ -139,7 +139,18 @@ class StateEstimator(object):
         # parameter tuning: Q smaller -> depend more on prediction
         self.Q = np.eye(12) * 0.1
         self.R = np.eye(12) * 0.1
-
+        
+        '''
+        self.Q = np.diag([0.00001, 0.00001, 0.00001, 
+                          0.00001, 0.00001, 0.00001, 
+                          0.000005, 0.000005, 0.000005, 
+                          0.0002, 0.0002, 0.0002])
+        self.R = np.diag([0.000001, 0.000001, 0.00002, 
+                          0.000001, 0.000001, 0.00002, 
+                          0.0003, 0.0003, 0.0003, 
+                          0.00111, 0.00111, 0.00111])
+        '''
+        
         # Initialize the prediction matrix
         self.P_old = np.eye(12) * 1 # Initialized by collected intial data before
 
@@ -228,21 +239,22 @@ class StateEstimator(object):
 
         "---test---"
         # Numeric derivatives: Compute velocities # used in 'self.x_meas'
+        d = math.exp(-self.dt / 0.7)
+
+        # Derivatives smoothing: to stabilize the iteration
+        #   1) slow down the update speed; 2) time-average denoising
         self.vel_meas = (self.pos_meas - self.pos_old) / self.dt
+        self.vel_meas = (1.0 - d) * self.vel_meas + d * self.vel_old
+
         self.euler_dot_meas = (self.euler_meas - self.euler_old) / self.dt
+        self.euler_dot_meas = (1.0 - d) * self.euler_dot_meas + d * self.euler_dot_old
+
+
         # combine pos, vel, euler angles into state vector & output vector
         self.x_meas = np.concatenate((self.pos_meas, self.vel_meas, self.euler_meas, self.euler_dot_meas))
         self.y_meas = self.G @ self.x_meas
         "---test---"
 
-
-    def prior_update(self):
-        """Predict future states using a double integrator model."""
-        # Acceleration and angular velocity are assumed constant
-        # Update position and orientation
-        self.pos += self.dt * self.vel + 0.5 * self.dt * self.dt * self.acc
-        self.vel += self.dt * self.acc
-        self.quat = apply_omega_to_quat(self.quat, self.omega_g, self.dt)
 
     "---test---"
     def EKF_update(self):
@@ -274,6 +286,7 @@ class StateEstimator(object):
             self.euler_dot = self.x_post[9:]
             self.quat = self.quat_back
 
+
             # Two quaternions for every rotation, make sure we take
             # the one that is consistent with previous measurements
             if np.dot(self.quat_old, self.quat) < 0.0:
@@ -295,7 +308,9 @@ class StateEstimator(object):
 
         self.pos_old[:] = self.pos
         self.vel_old[:] = self.vel
+        self.euler_old[:] = self.euler
         self.quat_old[:] = self.quat
+        self.euler_dot_old[:] = self.euler_dot
 
     def F_update(self):
         # Initialize F
